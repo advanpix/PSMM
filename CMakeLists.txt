@@ -1,12 +1,12 @@
-/*
- * This file is part of "Polynomials with Small Mahler Measure" (PSMM) project.
- *
- * Copyright (C) 2020, Advanpix LLC.
- * License: http://www.gnu.org/licenses/gpl.html GPL version 3 or higher
- *
- * Authors:
- *   Pavel Holoborodko <pavel@advanpix.com>
- */
+# 
+# This file is part of "Polynomials with Small Mahler Measure" (PSMM) project.
+# 
+# Copyright (C) 2020, Advanpix LLC.
+# License: http://www.gnu.org/licenses/gpl.html GPL version 3 or higher
+# 
+# Authors:
+#   Pavel Holoborodko <pavel@advanpix.com>
+# 
 
 cmake_minimum_required(VERSION 3.1)
 
