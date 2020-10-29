@@ -59,3 +59,5 @@ target_include_directories(psmm PUBLIC
     ${NTL_INCLUDE_DIRS}
     ${MPSOLVE_INCLUDE_DIRS}
 )
+
+install (TARGETS psmm DESTINATION ${CMAKE_INSTALL_PREFIX})
