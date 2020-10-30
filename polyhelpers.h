@@ -11,16 +11,7 @@
 #ifndef __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 #define __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 
-typedef struct{
-    std::size_t N;              // Polynomial degree
-    double M;                   // Mahler measure in double precision.
-    mpf_t  F;                   // Mahler measure in extended precision (if any)
-    std::vector<double> coeffs; // Polynomial coefficients.
-    std::size_t K;
-    std::size_t nnz;            // Number of non-zero coefficients
-}computed_polynomial_t;
-
-inline void load_polynomials(const std::string& filename, std::vector<computed_polynomial_t>& polynomials, int bits = 256)
+inline void load_polynomials(const std::string& filename, std::vector<polynomial_t>& polynomials, int bits = 256)
 {
     std::ifstream ifs(filename);
 
@@ -40,18 +31,18 @@ inline void load_polynomials(const std::string& filename, std::vector<computed_p
             {
                 //
                 //
-                // This code is for text file from Known180.gzip (downloaded from http://www.cecm.sfu.ca/~mjm/Lehmer/lists/Known180.gz)
+                // This code is for text file in a format of Known180.gzip (downloaded from http://www.cecm.sfu.ca/~mjm/Lehmer/lists/Known180.gz)
                 // Table has spaces between coefficients.
                 // Only half of coefficients are stored.
                 //
                 // 0 - degree
-                // 1 - M(f)
-                // 2 - K(?)
+                // 1 - M Mahler measure
+                // 2 - K Number of roots outside the unit circle.
                 // [3 ... ] - Coefficients
                 //
                 // Example: 16  1.224278907222   2  1 1 0-1-1 0 1 1 1
                 //
-                computed_polynomial_t poly;
+                polynomial_t poly;
                 std::vector<double>& coeffs = poly.coeffs;
 
                 poly.N  = atoi(tokens[0].c_str());
@@ -61,7 +52,7 @@ inline void load_polynomials(const std::string& filename, std::vector<computed_p
                 str2mpf(poly.F,tokens[1].c_str());
                 poly.M  = mpf_get_d(poly.F);
 
-                poly.K  = atof(tokens[2].c_str());
+                poly.r.K  = atof(tokens[2].c_str());
                 coeffs.resize(poly.N/2+1);
 
                 std::size_t k = 0;
@@ -89,13 +80,13 @@ inline void load_polynomials(const std::string& filename, std::vector<computed_p
     }
 }
 
-inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<double>& poly, std::vector<computed_polynomial_t>& polynomials)
+inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<double>& poly, std::vector<polynomial_t>& polynomials)
 {
     double min_diff = std::numeric_limits<double>::max();
     int min_diff_degree = 0;
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
-        computed_polynomial_t& p = polynomials[i];
+        polynomial_t& p = polynomials[i];
 
         //
         // Precomputed are given with 1e-12 accuracy

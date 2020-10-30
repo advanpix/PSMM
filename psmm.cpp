@@ -8,23 +8,7 @@
  *   Pavel Holoborodko <pavel@advanpix.com>
  */
 
-#include <cmath>
-#include <cstring>
-#include <random>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <fstream>
-#include <filesystem>
-#include <chrono>
-#include <vector>
-#include <map>
-#include <algorithm>
-
-#include <stdio.h>
-#include <gmp.h>
-
+#include "psmm.h"
 #include "utilities.h"
 #include "arguments.h"
 #include "rootfinder.h"
@@ -35,7 +19,7 @@
 int main(int argc, char* argv[])
 {
     //
-    // 'Known180' stores Mahler measure with 13 digits (12 for fractional part).
+    // The list of known polynomials with Mahler measure < 1.3 ('Known180' [1]) stores Mahler measure with 13 digits (12 for fractional part).
     // Hence, if you use Known180 then 'search_tolerance' must be >= 1e-12.
     //
     // This might be too high for high-order polynomials since their Mahler measures are clustered more densely.
@@ -57,6 +41,9 @@ int main(int argc, char* argv[])
     // In this case 'search_tolerance' can be as small as 1e-14.
     //
     // Still, there is a chance of loosing some polynomial with Mahler measure difference < 1e-14, but we must balance between double precision (speed) and extended precision (accuracy).
+    //
+    // References.
+    // 1. http://www.cecm.sfu.ca/~mjm/Lehmer/lists/
     //
     const int    search_accuracy  = 15;    // Request MPSolve to compute roots with this number of correct digits during the search phase.
     const double search_tolerance = 1e-14; // Must be ~pow(10,-(search_accuracy-1)). We assume polynomials are different if |M(p1)-M(p2)| > search_tolerance.
@@ -128,7 +115,7 @@ int main(int argc, char* argv[])
         }
 
     // Load known polynomials
-    std::vector<computed_polynomial_t> known;
+    std::vector<polynomial_t> known;
     if(!fknown.empty())
         load_polynomials(fknown,known,extended_prec);
 
@@ -154,7 +141,7 @@ int main(int argc, char* argv[])
     fflush(stdout);
 
     // Polynomials found in the current session.
-    std::vector<computed_polynomial_t> found;
+    std::vector<polynomial_t> found;
 
     std::size_t polys_per_report      = 0;
     std::size_t current_polynomial    = 0;
@@ -197,7 +184,7 @@ int main(int argc, char* argv[])
                             {
                                 // Unseen polynomial has been found, celebrate it with "***".
                                 printf("*** %.16f\t\t",mahler);
-                                computed_polynomial_t p;
+                                polynomial_t p;
 
                                 p.N      = degree;
                                 p.M      = mahler;
@@ -276,11 +263,11 @@ int main(int argc, char* argv[])
     std::size_t success_irreducible_polynomials  = 0;
     std::size_t success_factors_total            = 0;
 
-    std::vector<computed_polynomial_t> cleaned_found;
+    std::vector<polynomial_t> cleaned_found;
 
     for(std::size_t i = 0; i < found.size(); i++)
     {
-        computed_polynomial_t& poly = found[i];
+        polynomial_t& poly = found[i];
 
         // Factor found polynomial into factors of smaller degree.
         // Factors are stored as polynomials with full set of coefficients (not half as we do for reciprocal).
@@ -290,7 +277,7 @@ int main(int argc, char* argv[])
         if(irreducible)
         {
             // Compute mahler measure in extended precision for output.
-            compute_mahler_reciprocal_polynomial(poly.F,poly.coeffs,extended_prec,nthreads);
+            compute_mahler_reciprocal_polynomial(poly.F,poly.coeffs,extended_prec,nthreads,&poly.r);
 
             cleaned_found.push_back(poly);
             success_irreducible_polynomials++;
@@ -327,7 +314,7 @@ int main(int argc, char* argv[])
 
                         if(!skip)
                         {
-                            computed_polynomial_t p;
+                            polynomial_t p;
 
                             p.N  = degree;
                             p.M  = mahler;
@@ -337,7 +324,7 @@ int main(int argc, char* argv[])
                             p.nnz-=1;
 
                             // Compute mahler measure in extended precision for output.
-                            compute_mahler_reciprocal_polynomial(p.F,p.coeffs,extended_prec,nthreads);
+                            compute_mahler_reciprocal_polynomial(p.F,p.coeffs,extended_prec,nthreads,&p.r);
 
                             cleaned_found.push_back(p);
                             success_factors_total++;
@@ -351,9 +338,9 @@ int main(int argc, char* argv[])
     }
 
     // Sort list of cleaned-up results by degree & Mahler measure.
-    std::sort(cleaned_found.begin(),cleaned_found.end(),[](computed_polynomial_t& a,computed_polynomial_t &b) { return a.M < b.M;});
-    std::sort(cleaned_found.begin(),cleaned_found.end(),[](computed_polynomial_t& a,computed_polynomial_t &b) { return (a.N  < b.N) || ((a.N == b.N) && (a.M < b.M)); });
-
+    std::sort(cleaned_found.begin(),cleaned_found.end(),[](polynomial_t& a,polynomial_t &b) { return a.M < b.M;}); // by Mahler
+    std::sort(cleaned_found.begin(),cleaned_found.end(),[](polynomial_t& a,polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (a.M < b.M)); }); // by degree
+    
     auto main_loop_stop = std::chrono::high_resolution_clock::now();
     mpz_set_ui(time_elapsed,std::chrono::duration_cast<std::chrono::seconds>(main_loop_stop-main_loop_start).count());
     std::string total_time_elapsed = sec2yhms(time_elapsed,years,days,hours,minutes,seconds);
@@ -372,9 +359,12 @@ int main(int argc, char* argv[])
     // Show final results on screen
     for(std::size_t i = 0; i < cleaned_found.size(); i++)
     {
-        computed_polynomial_t& poly = cleaned_found[i];
-
-        printf("%2d %s %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(),poly.nnz);
+        polynomial_t& poly = cleaned_found[i];
+    
+        //
+        // D M NNZ K U Q R Coefficients
+        //
+        printf("%2d %s %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.r.K, poly.r.U, poly.r.Q, poly.r.R);
         for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",int(poly.coeffs[j]));
 
         printf("\n");
@@ -396,7 +386,7 @@ int main(int argc, char* argv[])
             fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %I64u polynomials\n",args.getArgValue("coeffs").c_str(),args.getArgValue("nnz").c_str(),total_time_elapsed.c_str(),cleaned_found.size());
             for(std::size_t i = 0; i < cleaned_found.size(); i++)
             {
-                computed_polynomial_t& poly = cleaned_found[i];
+                polynomial_t& poly = cleaned_found[i];
 
                 fprintf(foutput,"%2d %s %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(),poly.nnz);
                 for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput,"%d ",int(poly.coeffs[j]));
