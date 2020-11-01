@@ -121,7 +121,7 @@ int main(int argc, char* argv[])
         }
 
     // Load known polynomials
-    std::vector<polynomial_t> known;
+    std::vector<reciprocal_polynomial_t> known;
     if(!fknown.empty())
         load_polynomials(fknown,known,extended_prec);
 
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
     fflush(stdout);
 
     // Polynomials found in the current session.
-    std::vector<polynomial_t> candidates;
+    std::vector<reciprocal_polynomial_t> candidates;
 
     std::size_t polys_per_report      = 0;
     std::size_t current_polynomial    = 0;
@@ -165,6 +165,8 @@ int main(int argc, char* argv[])
         while(fcontinue)
         {
             bool skip = p.skip_next_polynomial(); // Skip next polynomials in a sequence (e.g. p(-x) and p(x) have the same roots by absolute value)
+                                                  // This can be extended, e.g. to detect non-primitive polynomials, or even by appliyng Graeffe's pre-screening.  
+                                                  
             fcontinue = p.next_polynomial(poly);  // Get the next polynomial in a sequence.
 
             if(fcontinue)
@@ -188,7 +190,7 @@ int main(int argc, char* argv[])
                             {
                                 // Unseen polynomial has been found, celebrate it with "***".
                                 printf("*** %.16f\t\t",mahler);
-                                polynomial_t p;
+                                reciprocal_polynomial_t p;
 
                                 p.N      = degree;
                                 p.M      = mahler;
@@ -267,11 +269,11 @@ int main(int argc, char* argv[])
     std::size_t success_irreducible_polynomials  = 0;
     std::size_t success_factors_total            = 0;
 
-    std::vector<polynomial_t> verified;
+    std::vector<reciprocal_polynomial_t> verified;
 
     for(std::size_t i = 0; i < candidates.size(); i++)
     {
-        polynomial_t& poly = candidates[i];
+        reciprocal_polynomial_t& candidate = candidates[i];
 
         //
         // Check if candidate polynomial is irreducible.
@@ -287,16 +289,16 @@ int main(int argc, char* argv[])
         //       Be cautious when "threshold" > 1.324717
         //
         std::vector<std::vector<double>> factors;
-        bool irreducible = factor_reciprocal_polynomial(poly.coeffs,factors);
+        bool irreducible = factor_reciprocal_polynomial(candidate.coeffs,factors);
 
         if(irreducible)
         {
             //
-            // Compute mahler measure in extended precision for output.
+            // Compute detailed properties of the candidate and add it to the verified list.
             //
-            compute_mahler_reciprocal_polynomial(poly.F,poly.coeffs,extended_prec,nthreads,&poly.r);
+            compute_all_properties_of_reciprocal_polynomial(candidate,extended_prec,nthreads);
 
-            verified.push_back(poly);
+            verified.push_back(candidate);
             success_irreducible_polynomials++;
             success_factors_total++;
         }
@@ -328,17 +330,19 @@ int main(int argc, char* argv[])
                             
                         if(verified_found_before == 0)
                         {
-                            polynomial_t p;
+                            reciprocal_polynomial_t p;
 
                             p.N  = degree;
-                            p.M  = mahler;
-
                             p.coeffs.assign(&factor[0],&factor[degree/2+1]);
-                            p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
-                            p.nnz-=1;  // ignore the a[0] = 1, which is constant.
+                            
+                            //p.M  = mahler;
+                            //p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
+                            //p.nnz-=1;  // ignore the a[0] = 1, which is constant.
 
                             // Compute mahler measure in extended precision for output.
-                            compute_mahler_reciprocal_polynomial(p.F,p.coeffs,extended_prec,nthreads,&p.r);
+                            //compute_mahler_reciprocal_polynomial(p.F,p.coeffs,extended_prec,nthreads,&p.r);
+
+                            compute_all_properties_of_reciprocal_polynomial(p,extended_prec,nthreads);                            
 
                             verified.push_back(p);
                             success_factors_total++;
@@ -354,8 +358,8 @@ int main(int argc, char* argv[])
     }
 
     // Sort list of cleaned-up results by degree & Mahler measure.
-    std::sort(verified.begin(),verified.end(),[](polynomial_t& a,polynomial_t &b) { return a.M < b.M;}); // by Mahler
-    std::sort(verified.begin(),verified.end(),[](polynomial_t& a,polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (a.M < b.M)); }); // by degree
+    std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return a.M < b.M;}); // by Mahler
+    std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (a.M < b.M)); }); // by degree
 
     auto main_loop_stop = std::chrono::high_resolution_clock::now();
     mpz_set_ui(time_elapsed,std::chrono::duration_cast<std::chrono::seconds>(main_loop_stop-main_loop_start).count());
@@ -375,12 +379,12 @@ int main(int argc, char* argv[])
     // Show final results on screen
     for(std::size_t i = 0; i < verified.size(); i++)
     {
-        polynomial_t& poly = verified[i];
+        reciprocal_polynomial_t& poly = verified[i];
 
         //
-        // D M NNZ K U Q R Coefficients
+        // D M NNZ H L K U Q R Coefficients
         //
-        printf("%2d %s %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.r.K, poly.r.U, poly.r.Q, poly.r.R);
+        printf("%2d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
         for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",int(poly.coeffs[j]));
 
         printf("\n");
@@ -402,7 +406,7 @@ int main(int argc, char* argv[])
             fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %I64u polynomials\n",args.getArgValue("coeffs").c_str(),args.getArgValue("nnz").c_str(),total_time_elapsed.c_str(),verified.size());
             for(std::size_t i = 0; i < verified.size(); i++)
             {
-                polynomial_t& poly = verified[i];
+                reciprocal_polynomial_t& poly = verified[i];
 
                 fprintf(foutput,"%2d %s %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(),poly.nnz);
                 for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput,"%d ",int(poly.coeffs[j]));
