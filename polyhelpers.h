@@ -80,7 +80,7 @@ inline void load_polynomials(const std::string& filename, std::vector<polynomial
     }
 }
 
-inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<double>& poly, std::vector<polynomial_t>& polynomials)
+inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<polynomial_t>& polynomials)
 {
     double min_diff = std::numeric_limits<double>::max();
     int min_diff_degree = 0;
@@ -101,6 +101,13 @@ inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<doubl
     }
 
     return std::pair<int,double>(min_diff_degree,min_diff);
+}
+
+inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<polynomial_t>& polynomials)
+{
+    std::pair<int,double> nearest_polynomial = find_nearest_polynomial(mahler,polynomials);    
+    int found = (nearest_polynomial.second <= tolerance) && (nearest_polynomial.first <= n) ? nearest_polynomial.first: 0;
+    return found;
 }
 
 #endif // __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
