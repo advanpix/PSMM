@@ -11,7 +11,7 @@
 #ifndef __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 #define __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 
-inline void load_polynomials(const std::string& filename, std::vector<polynomial_t>& polynomials, int bits = 256)
+inline void load_polynomials(const std::string& filename, std::vector<reciprocal_polynomial_t>& polynomials, int bits = 256)
 {
     std::ifstream ifs(filename);
 
@@ -42,17 +42,17 @@ inline void load_polynomials(const std::string& filename, std::vector<polynomial
                 //
                 // Example: 16  1.224278907222   2  1 1 0-1-1 0 1 1 1
                 //
-                polynomial_t poly;
+                reciprocal_polynomial_t poly;
                 std::vector<double>& coeffs = poly.coeffs;
 
                 poly.N  = atoi(tokens[0].c_str());
 
-                // Read the Mahler measure in extended precision and convcert to double for fast computations later on.
+                // Read the Mahler measure in extended precision and convert to double for fast computations later on.
                 mpf_init2(poly.F,bits);
                 str2mpf(poly.F,tokens[1].c_str());
                 poly.M  = mpf_get_d(poly.F);
 
-                poly.r.K  = atof(tokens[2].c_str());
+                poly.K  = atof(tokens[2].c_str());
                 coeffs.resize(poly.N/2+1);
 
                 std::size_t k = 0;
@@ -80,13 +80,13 @@ inline void load_polynomials(const std::string& filename, std::vector<polynomial
     }
 }
 
-inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<polynomial_t>& polynomials)
+inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<reciprocal_polynomial_t>& polynomials)
 {
     double min_diff = std::numeric_limits<double>::max();
     int min_diff_degree = 0;
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
-        polynomial_t& p = polynomials[i];
+        reciprocal_polynomial_t& p = polynomials[i];
 
         //
         // Precomputed are given with 1e-12 accuracy
@@ -103,11 +103,49 @@ inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<polyn
     return std::pair<int,double>(min_diff_degree,min_diff);
 }
 
-inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<polynomial_t>& polynomials)
+inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<reciprocal_polynomial_t>& polynomials)
 {
-    std::pair<int,double> nearest_polynomial = find_nearest_polynomial(mahler,polynomials);    
-    int found = (nearest_polynomial.second <= tolerance) && (nearest_polynomial.first <= n) ? nearest_polynomial.first: 0;
+    std::pair<int,double> nearest_polynomial = find_nearest_polynomial(mahler,polynomials);
+    int found = (nearest_polynomial.second <= tolerance) && (nearest_polynomial.first <= n) ? nearest_polynomial.first : 0;
     return found;
+}
+
+inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomial_t& p, int bits = 256, int nthreads = 1)
+{
+    //
+    // Polynomial degree and coefficients must be set before calling the function.
+    //
+    
+    int N = 2 * (p.coeffs.size()-1); // = p.N;
+    std::vector<double> a(N+1);
+
+    // Expand coefficients to full polynomial
+    for(int k = 0; k <= N/2; k++) a[k]     = p.coeffs[k];
+    for(int k = 1; k <= N/2; k++) a[N/2+k] = a[N/2-k];
+
+    //
+    // Compute roots, their properties and Mahler measure in extended precision.
+    //
+    mpsolve_compute_mahler_with_properties(p.F, N, a.data(), p.K, p.U, p.Q, p.R, bits, nthreads);
+    p.M = mpf_get_d(p.F);
+    
+    //
+    // Compute NNZ, for the half of the coefficients.
+    //
+    p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
+    p.nnz-=1;  // ignore the a[0] = 1, which is constant.
+
+    //
+    // Compute NNZ, H(p) and L(p)
+    //
+    // Well, we can do this using std::max_element and std::accumulate, but here we do this in one pass over the coeffcients.
+    p.L = p.H = 0;
+    for(std::size_t k = 0; k < a.size(); k++)
+    {
+        std::size_t c = std::size_t(abs(a[k]));
+        p.H  = std::max(p.H,c);
+        p.L += c;
+    }
 }
 
 #endif // __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
