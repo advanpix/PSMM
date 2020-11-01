@@ -57,6 +57,12 @@ int main(int argc, char* argv[])
     const int    extended_digits  = 72;
     const int    extended_prec    = std::ceil(extended_digits * log2(10)); // Use a bit higher precision for computations.
 
+    if(1)
+    {
+        convert_file("AllKnownAdvanpixOld", "AllKnownAdvanpix", extended_digits,extended_prec,8);
+        exit(1);
+    }
+
     ArgumentsParser args(argc,argv);
 
     if(
@@ -165,8 +171,8 @@ int main(int argc, char* argv[])
         while(fcontinue)
         {
             bool skip = p.skip_next_polynomial(); // Skip next polynomials in a sequence (e.g. p(-x) and p(x) have the same roots by absolute value)
-                                                  // This can be extended, e.g. to detect non-primitive polynomials, or even by appliyng Graeffe's pre-screening.  
-                                                  
+                                                  // This can be extended, e.g. to detect non-primitive polynomials, or even by appliyng Graeffe's pre-screening.
+
             fcontinue = p.next_polynomial(poly);  // Get the next polynomial in a sequence.
 
             if(fcontinue)
@@ -178,14 +184,14 @@ int main(int argc, char* argv[])
 
                     if(mahler > 1.0 && mahler <= threshold)
                     {
-                        // Search if any of known polynomials have the same Mahler measure.                        
+                        // Search if any of known polynomials have the same Mahler measure.
                         int known_before = same_polynomial_found(degree, mahler, search_tolerance, known);
 
                         if(known_before == 0)
                         {
                             // Search if any of recently computed polynomials have the same Mahler measure.
                             int candidate_found_before = same_polynomial_found(degree, mahler, search_tolerance, candidates);
-                            
+
                             if(candidate_found_before == 0)
                             {
                                 // Unseen polynomial has been found, celebrate it with "***".
@@ -322,19 +328,19 @@ int main(int argc, char* argv[])
                 {
                     // Search if any of known polynomials have the same Mahler measure.
                     int known_before = same_polynomial_found(degree, mahler, search_tolerance, known);
-                        
+
                     if(known_before == 0)
                     {
                         // Search if any of computed polynomials have the same Mahler measure.
                         int verified_found_before = same_polynomial_found(degree, mahler, search_tolerance, verified);
-                            
+
                         if(verified_found_before == 0)
                         {
                             reciprocal_polynomial_t p;
 
                             p.N  = degree;
                             p.coeffs.assign(&factor[0],&factor[degree/2+1]);
-                            
+
                             //p.M  = mahler;
                             //p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
                             //p.nnz-=1;  // ignore the a[0] = 1, which is constant.
@@ -342,7 +348,7 @@ int main(int argc, char* argv[])
                             // Compute mahler measure in extended precision for output.
                             //compute_mahler_reciprocal_polynomial(p.F,p.coeffs,extended_prec,nthreads,&p.r);
 
-                            compute_all_properties_of_reciprocal_polynomial(p,extended_prec,nthreads);                            
+                            compute_all_properties_of_reciprocal_polynomial(p,extended_prec,nthreads);
 
                             verified.push_back(p);
                             success_factors_total++;
@@ -408,8 +414,11 @@ int main(int argc, char* argv[])
             {
                 reciprocal_polynomial_t& poly = verified[i];
 
-                fprintf(foutput,"%2d %s %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(),poly.nnz);
-                for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput,"%d ",int(poly.coeffs[j]));
+                //
+                // D M NNZ H L K U Q R Coefficients
+                //
+                fprintf(foutput, "%2d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
                 fprintf(foutput,"\n");
                 fflush(foutput);
             }
