@@ -16,6 +16,12 @@
 #include "polyiterator.h"
 #include "polyhelpers.h"
 
+// References.
+//
+// [Br51] R. Breusch, On the distribution of the roots of a polynomial with integral coefficients, Proc. Amer. Math. Soc. 2 (1951), 939–941
+// [Sm71] C.J. Smyth, On the product of the conjugates outside the unit circle of an algebraic integer, Bull. London Math. Soc. 3 (1971), 169–175.
+
+
 int main(int argc, char* argv[])
 {
     //
@@ -141,7 +147,7 @@ int main(int argc, char* argv[])
     fflush(stdout);
 
     // Polynomials found in the current session.
-    std::vector<polynomial_t> found;
+    std::vector<polynomial_t> candidates;
 
     std::size_t polys_per_report      = 0;
     std::size_t current_polynomial    = 0;
@@ -170,17 +176,15 @@ int main(int argc, char* argv[])
 
                     if(mahler > 1.0 && mahler <= threshold)
                     {
-                        // Search if any of known polynomials have the same Mahler measure.
-                        std::pair<int,double> nearest_known = find_nearest_polynomial(mahler,poly,known);
-                        bool skip = (nearest_known.second <= search_tolerance) && (nearest_known.first <= degree);
+                        // Search if any of known polynomials have the same Mahler measure.                        
+                        int known_before = same_polynomial_found(degree, mahler, search_tolerance, known);
 
-                        if(!skip)
+                        if(known_before == 0)
                         {
                             // Search if any of recently computed polynomials have the same Mahler measure.
-                            std::pair<int,double> nearest_found = find_nearest_polynomial(mahler,poly,found);
-                            bool skip = (nearest_found.second <= search_tolerance);
-
-                            if(!skip)
+                            int candidate_found_before = same_polynomial_found(degree, mahler, search_tolerance, candidates);
+                            
+                            if(candidate_found_before == 0)
                             {
                                 // Unseen polynomial has been found, celebrate it with "***".
                                 printf("*** %.16f\t\t",mahler);
@@ -191,7 +195,7 @@ int main(int argc, char* argv[])
                                 p.nnz    = nnz[i];
                                 p.coeffs = poly;
 
-                                found.push_back(p);
+                                candidates.push_back(p);
                             }
                             else
                             {
@@ -202,7 +206,7 @@ int main(int argc, char* argv[])
                         else
                         {
                             // Polynomial was known before, mark it with "---" as unimportant.
-                            printf("--- %.16f  (%3d)\t",mahler,nearest_known.first);
+                            printf("--- %.16f  (%3d)\t",mahler,known_before);
                         }
 
                         printf("NNZ = %d\t[",nnz[i]);
@@ -230,7 +234,7 @@ int main(int argc, char* argv[])
 
                     std::string time_left_str = sec2yhms(time_left,years,days,hours,minutes,seconds);
 
-                    printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %d,\tFOUND = %I64u\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,found.size(),time_left_str.c_str());
+                    printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %d,\tFOUND = %I64u\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,candidates.size(),time_left_str.c_str());
 
                     last_report_time = current_time;
                     polys_per_report = 0;
@@ -249,7 +253,7 @@ int main(int argc, char* argv[])
     printf("Polynomials Total     = %s\n",mpz2string(total_number_of_polynomials).c_str());
     printf("Polynomials Checked   = %I64u\n",polynomials_processed);
     printf("-----------------------------------------------------------------\n");
-    printf("Polynomials Selected  = %I64u\t(M(p) <= threshold)\n",found.size());
+    printf("Polynomials Selected  = %I64u\t(M(p) <= threshold)\n",candidates.size());
     fflush(stdout);
 
 
@@ -263,56 +267,66 @@ int main(int argc, char* argv[])
     std::size_t success_irreducible_polynomials  = 0;
     std::size_t success_factors_total            = 0;
 
-    std::vector<polynomial_t> cleaned_found;
+    std::vector<polynomial_t> verified;
 
-    for(std::size_t i = 0; i < found.size(); i++)
+    for(std::size_t i = 0; i < candidates.size(); i++)
     {
-        polynomial_t& poly = found[i];
+        polynomial_t& poly = candidates[i];
 
-        // Factor found polynomial into factors of smaller degree.
-        // Factors are stored as polynomials with full set of coefficients (not half as we do for reciprocal).
+        //
+        // Check if candidate polynomial is irreducible.
+        //   If "yes", then compute its detailed properties (H(p), L(p), high-accuracy Mahler measure M(p) and root characteristics).
+        //   If "no", then factor the polynomial and check each factor to find the one with small Mahler measure M(p).
+        //
+
+        //
+        // Factors are stored as polynomials with full set of coefficients (not half as we do for reciprocal). This is how NTL works and we follow.
+        //
+        // Note. Usually we are interested in polynomials with M(p) < 1.3.
+        //       In this case all factors are guaranteed to be reciprocal (since lower bound for non-reciprocal polynomials M(p) >= 1.324717..., see [Br51] and [Sm71]).
+        //       Be cautious when "threshold" > 1.324717
+        //
         std::vector<std::vector<double>> factors;
         bool irreducible = factor_reciprocal_polynomial(poly.coeffs,factors);
 
         if(irreducible)
         {
+            //
             // Compute mahler measure in extended precision for output.
+            //
             compute_mahler_reciprocal_polynomial(poly.F,poly.coeffs,extended_prec,nthreads,&poly.r);
 
-            cleaned_found.push_back(poly);
+            verified.push_back(poly);
             success_irreducible_polynomials++;
             success_factors_total++;
         }
         else
         {
-            // Check each factor of the polynomial.
+            //
+            // Check each factor of the polynomial otherwise.
+            //
             for(std::size_t j = 0; j < factors.size(); j++)
             {
-                factors_checked++;
-
                 std::vector<double>& factor = factors[j];
                 int degree = factors[j].size()-1;
 
                 //
                 // Find roots, compute Mahler measure and handle the result.
-                // Although factors are reciprocal, they are stored with full set of coefficients (that is how factor_reciprocal_polynomial works)
-                // Therefore we compute Mahler for full set of coefficients.
+                // Factors are stored with full set of coefficients, therefore we compute Mahler for full set of coefficients.
                 //
                 double mahler = compute_mahler_general_polynomial(factor,search_accuracy,nthreads);
 
                 if(mahler > 1.0 && mahler <= threshold)
                 {
                     // Search if any of known polynomials have the same Mahler measure.
-                    std::pair<int,double> nearest_known = find_nearest_polynomial(mahler,factor,known);
-                    bool skip = (nearest_known.second <= search_tolerance) && (nearest_known.first <= degree);
-
-                    if(!skip)
+                    int known_before = same_polynomial_found(degree, mahler, search_tolerance, known);
+                        
+                    if(known_before == 0)
                     {
                         // Search if any of computed polynomials have the same Mahler measure.
-                        std::pair<int,double> nearest_found = find_nearest_polynomial(mahler,factor,cleaned_found);
-                        skip = (nearest_found.second <= search_tolerance) && (nearest_found.first <= degree);
-
-                        if(!skip)
+                        int verified_found_before = same_polynomial_found(degree, mahler, search_tolerance, verified);
+                            
+                        if(verified_found_before == 0)
                         {
                             polynomial_t p;
 
@@ -321,16 +335,18 @@ int main(int argc, char* argv[])
 
                             p.coeffs.assign(&factor[0],&factor[degree/2+1]);
                             p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
-                            p.nnz-=1;
+                            p.nnz-=1;  // ignore the a[0] = 1, which is constant.
 
                             // Compute mahler measure in extended precision for output.
                             compute_mahler_reciprocal_polynomial(p.F,p.coeffs,extended_prec,nthreads,&p.r);
 
-                            cleaned_found.push_back(p);
+                            verified.push_back(p);
                             success_factors_total++;
                         }
                     }
                 }
+
+                factors_checked++;
             }
 
             reducible_polynomials++;
@@ -338,9 +354,9 @@ int main(int argc, char* argv[])
     }
 
     // Sort list of cleaned-up results by degree & Mahler measure.
-    std::sort(cleaned_found.begin(),cleaned_found.end(),[](polynomial_t& a,polynomial_t &b) { return a.M < b.M;}); // by Mahler
-    std::sort(cleaned_found.begin(),cleaned_found.end(),[](polynomial_t& a,polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (a.M < b.M)); }); // by degree
-    
+    std::sort(verified.begin(),verified.end(),[](polynomial_t& a,polynomial_t &b) { return a.M < b.M;}); // by Mahler
+    std::sort(verified.begin(),verified.end(),[](polynomial_t& a,polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (a.M < b.M)); }); // by degree
+
     auto main_loop_stop = std::chrono::high_resolution_clock::now();
     mpz_set_ui(time_elapsed,std::chrono::duration_cast<std::chrono::seconds>(main_loop_stop-main_loop_start).count());
     std::string total_time_elapsed = sec2yhms(time_elapsed,years,days,hours,minutes,seconds);
@@ -348,7 +364,7 @@ int main(int argc, char* argv[])
     printf("--- Reducible         = %I64u\n",reducible_polynomials);
     printf("--- Factors Checked   = %I64u\n",factors_checked);
     printf("-----------------------------------------------------------------\n");
-    printf("Polynomials Found     = %I64u\t(M(p) <= threshold)\n",cleaned_found.size());
+    printf("Polynomials Found     = %I64u\t(M(p) <= threshold)\n",verified.size());
     printf("--- Target degree     = %I64u\n",success_irreducible_polynomials);
     printf("--- Lower Degree      = %I64u\n",success_factors_total-success_irreducible_polynomials);
     printf("-----------------------------------------------------------------\n");
@@ -357,10 +373,10 @@ int main(int argc, char* argv[])
     fflush(stdout);
 
     // Show final results on screen
-    for(std::size_t i = 0; i < cleaned_found.size(); i++)
+    for(std::size_t i = 0; i < verified.size(); i++)
     {
-        polynomial_t& poly = cleaned_found[i];
-    
+        polynomial_t& poly = verified[i];
+
         //
         // D M NNZ K U Q R Coefficients
         //
@@ -373,7 +389,7 @@ int main(int argc, char* argv[])
     printf("-----------------------------------------------------------------\n");
 
     // Append final results to the file
-    if(cleaned_found.size() > 0)
+    if(verified.size() > 0)
     {
         FILE* foutput = NULL;
 
@@ -383,10 +399,10 @@ int main(int argc, char* argv[])
         if(foutput != NULL)
         {
             fprintf(foutput,"\n");
-            fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %I64u polynomials\n",args.getArgValue("coeffs").c_str(),args.getArgValue("nnz").c_str(),total_time_elapsed.c_str(),cleaned_found.size());
-            for(std::size_t i = 0; i < cleaned_found.size(); i++)
+            fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %I64u polynomials\n",args.getArgValue("coeffs").c_str(),args.getArgValue("nnz").c_str(),total_time_elapsed.c_str(),verified.size());
+            for(std::size_t i = 0; i < verified.size(); i++)
             {
-                polynomial_t& poly = cleaned_found[i];
+                polynomial_t& poly = verified[i];
 
                 fprintf(foutput,"%2d %s %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(),poly.nnz);
                 for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput,"%d ",int(poly.coeffs[j]));
