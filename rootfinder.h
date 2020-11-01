@@ -149,8 +149,6 @@ inline int mpsolve_compute_mahler(mpf_ptr m, int n, const double* coeffs, int bi
         std::size_t Q(0);            // Number of complex non-unity roots (go in quadruplets): z = r*exp(i*t), z* = r*exp(-i*t), 1/z = (1/r)*exp(-i*t), 1/z* = (1/r)*exp(i*t).
         std::size_t R(0);            // Number of real non-unity roots (go in pairs):          z = r, z = 1/r.
 
-        const double tolerance = 1e-15;
-
         bool analysis = (r != NULL); // Do the detailed analysis only if requested (it might slow things down)
 
         mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
@@ -183,17 +181,33 @@ inline int mpsolve_compute_mahler(mpf_ptr m, int n, const double* coeffs, int bi
 
             if(analysis)
             {
-                mpf_sub_ui(delta,rabs,1); // delta = ||z|-1|
+                //
+                // Compute machine epsilon for the requested precision, machine epsilon = 2^-(bits-1)
+                // Please note, GMP operates by limbs, so that actual number of bits used is >= bits.
+                //
+                // Machine epsilon is used as tolerance in checking the closeness of floating point numbers. 
+                // This is fine when bits is not a multiple of GMP's limbs (internal GMP precision > bits).
+                // But might be a problem when internal GMP precision == bits.
+                //
+                // That is why we skip the last decimal digit and use macheps = 2^-(bits-1-ceil(log2(10))) = 2^-(bits-5).
+                //
+                
+                mpf_t macheps;
+                mpf_init2(macheps,bits);
+                mpf_set_ui(macheps,1);
+                mpf_div_2exp(macheps,macheps,std::max(5,(bits-5)));
+
+                mpf_sub_ui(delta,rabs,1);
                 mpf_abs(delta,delta);
 
-                if(mpf_cmp_d(delta,tolerance) < 0)
+                if(mpf_cmp(delta,macheps) < 0)  // ||z|-1| < macheps
                 {
                     U++; // unity root
                 }
                 else
                 {
-                    mpf_abs(delta,mpc_Im(results[i])); // delta = |Im(z)|
-                    if(mpf_cmp_d(delta,tolerance) < 0)
+                    mpf_abs(delta,mpc_Im(results[i]));
+                    if(mpf_cmp(delta,macheps) < 0) // |Im(z)| < macheps
                     {
                         R++; // real non-unity root
                     }
@@ -202,6 +216,8 @@ inline int mpsolve_compute_mahler(mpf_ptr m, int n, const double* coeffs, int bi
                         Q++; // complex non-unity root
                     }
                 }
+
+                mpf_clear(macheps);
             }
         }
 
