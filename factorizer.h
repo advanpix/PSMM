@@ -15,7 +15,8 @@
 inline bool factor_polynomial(std::vector<double>& coeffs, std::vector<std::vector<double>>& factors)
 {
    //
-   // coeffs: a[0],...,a[N]
+   // Calls NTL to factorize the polynomial over Z,
+   // Coefficients stored from lowers to highest: a[0],...,a[N]
    //
    NTL::ZZX poly;
    poly.SetLength(coeffs.size());
@@ -27,8 +28,6 @@ inline bool factor_polynomial(std::vector<double>& coeffs, std::vector<std::vect
    NTL::ZZ c;
 
    factor(c, allfactors, poly);
-
-   bool reducible = (allfactors.length() > 1);
 
    for(int i = 0; i < allfactors.length(); i++)
    {
@@ -49,12 +48,18 @@ inline bool factor_polynomial(std::vector<double>& coeffs, std::vector<std::vect
 
 inline bool factor_reciprocal_polynomial(std::vector<double>& coeffs, std::vector<std::vector<double>>& factors)
 {
+    //
+    // Convert reciprocal polynomial to full and pass it to NTL.
+    //
     int N = 2 * (coeffs.size()-1);
     std::vector<double> full_coeffs(N+1);
 
     for(int k = 0; k <= N/2; k++) full_coeffs[k]     = coeffs[k];
     for(int k = 1; k <= N/2; k++) full_coeffs[N/2+k] = full_coeffs[N/2-k];
 
+    //
+    // Returns factors with full set of coefficients.
+    //
     return factor_polynomial(full_coeffs,factors);
 }
 
