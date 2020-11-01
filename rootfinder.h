@@ -123,7 +123,7 @@ inline double compute_mahler_reciprocal_polynomial(const std::vector<double>& co
 //
 // One-shot simple version with re-allocations on each call.
 //
-inline int mpsolve_compute_mahler(mpf_ptr m, int n, const double* coeffs, int bits = 256, int nthreads = 1, roots_properties_t* r = NULL)
+inline int mpsolve_compute_mahler_with_properties(mpf_ptr m, int n, const double* coeffs, std::size_t& K, std::size_t& U, std::size_t& Q, std::size_t& R, int bits = 256, int nthreads = 1)
 {
     int error = 0;
 
@@ -144,29 +144,42 @@ inline int mpsolve_compute_mahler(mpf_ptr m, int n, const double* coeffs, int bi
 
     if(error == 0)
     {
-        std::size_t K(0);            // Number of roots outside the unit circle.
-        std::size_t U(0);            // Number of complex unity roots (go in pairs):           z = exp(i*t), z* = exp(-i*t).
-        std::size_t Q(0);            // Number of complex non-unity roots (go in quadruplets): z = r*exp(i*t), z* = r*exp(-i*t), 1/z = (1/r)*exp(-i*t), 1/z* = (1/r)*exp(i*t).
-        std::size_t R(0);            // Number of real non-unity roots (go in pairs):          z = r, z = 1/r.
-
-        bool analysis = (r != NULL); // Do the detailed analysis only if requested (it might slow things down)
+        K = 0;  // Number of roots outside the unit circle.
+        U = 0;  // Number of complex unity roots (go in pairs):           z = exp(i*t), z* = exp(-i*t).
+        Q = 0;  // Number of complex non-unity roots (go in quadruplets): z = r*exp(i*t), z* = r*exp(-i*t), 1/z = (1/r)*exp(-i*t), 1/z* = (1/r)*exp(i*t).
+        R = 0;  // Number of real non-unity roots (go in pairs):          z = r, z = 1/r.
 
         mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
         mpc_vinit2(results,n,bits);
 
         mps_context_get_roots_m(s, &results, NULL);
 
-        mpf_t mahler, rabs, temp, delta;
+        mpf_t mahler, rabs, temp, delta, macheps;
         mpf_init2(mahler,bits);
         mpf_init2(rabs,  bits);
         mpf_init2(temp,  bits);
         mpf_init2(delta, bits);
 
+        //
+        // Compute machine epsilon for the requested precision, machine epsilon = 2^-(bits-1)
+        // Please note, GMP operates by limbs, so that actual number of bits used is >= bits.
+        //
+        // Machine epsilon is used as tolerance in checking the closeness of floating point numbers. 
+        // This is fine when bits is not a multiple of GMP's limbs (internal GMP precision > bits).
+        // But might be a problem when internal GMP precision == bits.
+        //
+        // That is why we skip the last decimal digit and use macheps = 2^-(bits-1-ceil(log2(10))) = 2^-(bits-5).
+        //
+        mpf_init2(macheps,bits);
+        mpf_set_ui(macheps,1);
+        mpf_div_2exp(macheps,macheps,std::max(5,(bits-5)));
+
         mpf_set_si(mahler,1);
         for(int i = 0; i < n; i++)
         {
             //
-            // rabs = sqrt(x^2+y^2) - magnitude of the root.
+            // Root magnitude: rabs = sqrt(x^2+y^2)
+            // We use brute-force algorithm, but will have to implement proper hypot in future.
             //
             mpf_mul (temp, mpc_Re(results[i]), mpc_Re(results[i]));
             mpf_mul (rabs, mpc_Im(results[i]), mpc_Im(results[i]));
@@ -179,60 +192,30 @@ inline int mpsolve_compute_mahler(mpf_ptr m, int n, const double* coeffs, int bi
                 K++;
             }
 
-            if(analysis)
+            mpf_sub_ui(delta,rabs,1);
+            mpf_abs(delta,delta);
+            if(mpf_cmp(delta,macheps) < 0)  // ||z|-1| < macheps
             {
-                //
-                // Compute machine epsilon for the requested precision, machine epsilon = 2^-(bits-1)
-                // Please note, GMP operates by limbs, so that actual number of bits used is >= bits.
-                //
-                // Machine epsilon is used as tolerance in checking the closeness of floating point numbers. 
-                // This is fine when bits is not a multiple of GMP's limbs (internal GMP precision > bits).
-                // But might be a problem when internal GMP precision == bits.
-                //
-                // That is why we skip the last decimal digit and use macheps = 2^-(bits-1-ceil(log2(10))) = 2^-(bits-5).
-                //
-                
-                mpf_t macheps;
-                mpf_init2(macheps,bits);
-                mpf_set_ui(macheps,1);
-                mpf_div_2exp(macheps,macheps,std::max(5,(bits-5)));
-
-                mpf_sub_ui(delta,rabs,1);
-                mpf_abs(delta,delta);
-
-                if(mpf_cmp(delta,macheps) < 0)  // ||z|-1| < macheps
+                U++; // unity root
+            }
+            else
+            {
+                mpf_abs(delta,mpc_Im(results[i]));
+                if(mpf_cmp(delta,macheps) < 0) // |Im(z)| < macheps
                 {
-                    U++; // unity root
+                    R++; // real non-unity root
                 }
                 else
                 {
-                    mpf_abs(delta,mpc_Im(results[i]));
-                    if(mpf_cmp(delta,macheps) < 0) // |Im(z)| < macheps
-                    {
-                        R++; // real non-unity root
-                    }
-                    else
-                    {
-                        Q++; // complex non-unity root
-                    }
+                    Q++; // complex non-unity root
                 }
-
-                mpf_clear(macheps);
             }
-        }
-
-        if(analysis)
-        {
-            r->K = K;
-            r->U = U;
-            r->Q = Q;
-            r->R = R;
         }
 
         mpf_init2(m,mpf_get_prec(mahler));
         mpf_set(m,mahler);
 
-        mpf_clears(mahler,rabs,temp,delta,NULL);
+        mpf_clears(mahler,rabs,temp,delta,macheps,NULL);
 
         mpc_vclear(results,n);
         std::free(results);
@@ -242,24 +225,6 @@ inline int mpsolve_compute_mahler(mpf_ptr m, int n, const double* coeffs, int bi
     mps_context_free(s);
 
     return error;
-}
-
-inline void compute_mahler_general_polynomial(mpf_ptr m, const std::vector<double>& coeffs, int bits = 256, int nthreads = 1)
-{
-    int N = (coeffs.size()-1);
-    mpsolve_compute_mahler(m,N,coeffs.data(),bits, nthreads);
-}
-
-inline void compute_mahler_reciprocal_polynomial(mpf_ptr m, const std::vector<double>& coeffs, int bits = 256, int nthreads = 1, roots_properties_t* r = NULL)
-{
-    int N = 2 * (coeffs.size()-1);
-    std::vector<double> a(N+1);
-
-    // Expand coefficients to full polynomial
-    for(int k = 0; k <= N/2; k++) a[k]     = coeffs[k];
-    for(int k = 1; k <= N/2; k++) a[N/2+k] = a[N/2-k];
-
-    mpsolve_compute_mahler(m,N,a.data(), bits, nthreads, r);
 }
 
 #endif // PSMM_ROOT_FINDER_H
