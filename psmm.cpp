@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
     {
         // Example:
         //
-        //    psmm -degree=N -coeffs=-1,1 -threshold=1.3 -nnz=1,2,3,4 -threads=3 -period=5 -known=AllKnown -addto=AllKnown
+        //    psmm -degree=N -coeffs=-1,1 -threshold=1.3 -nnz=1,2,3,4 -threads=3 -period=5 -known=AllKnown -addto=AllKnown -verbosity=2
         //
         puts("psmm -degree=N -coeffs=c0,c1,c2,... -threshold=T -nnz=nnz1,nnz2,nnz3,... -threads=M -period=3600 -known=AllKnown -addto=AllKnown");
         return EXIT_FAILURE;
@@ -79,8 +79,9 @@ int main(int argc, char* argv[])
     double threshold   = std::stod(args.getArgValue("threshold"));  // Mahler measure upper threshold.
     std::string fknown = args.getArgValue("known");                 // File with already known polynomials with Mahler measure < threshold.
     std::string faddto = args.getArgValue("addto");                 // File to add the found polynomials, usually the same as "load"
-    int nthreads       = args.argSupplied("threads") ? std::stoi(args.getArgValue("threads")) : 1;  // CPU threads to use (1 by default).
-    int period         = args.argSupplied("period")  ? std::stoi(args.getArgValue("period"))  : 5;  // Show progress report every "period" of seconds
+    int nthreads       = args.argSupplied("threads")    ? std::stoi(args.getArgValue("threads"))    : 1;  // CPU threads to use (1 by default).
+    int period         = args.argSupplied("period")     ? std::stoi(args.getArgValue("period"))     : 5;  // Show progress report every "period" of seconds
+    int verbosity      = args.argSupplied("verbosity")  ? std::stoi(args.getArgValue("verbosity"))  : 1;  // 1 - simple report, 2 - extended with statistics
 
     if(degree & 1)
     {
@@ -145,6 +146,43 @@ int main(int argc, char* argv[])
     printf("Polynomials  = %s\n",mpz2string(total_number_of_polynomials).c_str());
     printf("-----------------------------------------------------------------\n");
     fflush(stdout);
+
+    if(verbosity == 2)
+    {
+        printf("Polynomials loaded from %s have following properties:\n",fknown.c_str());
+        //
+        // Compute and show some statistics
+        //
+        int maxNNZ(0), maxH(0),maxL(0),maxK(0), maxU(0), maxQ(0), maxR(0);
+        for(std::size_t i = 0; i < known.size(); i++)
+        {
+            std::vector<double> divisors;
+            bool is_primitive = is_primitive_reciprocal_polynomial(known[i].coeffs,divisors);
+
+            maxNNZ = (known[maxNNZ].nnz < known[i].nnz ? i : maxNNZ);
+            maxH   = (known[maxH].H     < known[i].H   ? i : maxH  );
+            maxL   = (known[maxL].L     < known[i].L   ? i : maxL  );
+            maxK   = (known[maxK].K     < known[i].K   ? i : maxK  );
+            maxU   = (known[maxU].U     < known[i].U   ? i : maxU  );
+            maxQ   = (known[maxQ].Q     < known[i].Q   ? i : maxQ  );
+            maxR   = (known[maxR].R     < known[i].R   ? i : maxR  );
+
+            if(!is_primitive)
+            {
+                printf("NON-PRIMITIVE (%d): ",int(divisors.back()));
+                printp(known[i],extended_digits);
+            }
+        }
+
+        printf("\nMaximum number of non-zero coefficients (NNZ = %d):\n", known[maxNNZ].nnz);   printp(known[maxNNZ],extended_digits);
+        printf("\nMaximum Height (H = %d):\n",known[maxH].H);                                   printp(known[maxH]  ,extended_digits);
+        printf("\nMaximum Length (L = %d):\n",known[maxL].L);                                   printp(known[maxL]  ,extended_digits);
+        printf("\nMaximum number of roots outside unit disk (K = %d):\n",known[maxK].K);        printp(known[maxK]  ,extended_digits);
+        printf("\nMaximum number of roots of unity (U = %d):\n",known[maxU].U);                 printp(known[maxU]  ,extended_digits);
+        printf("\nMaximum number of complex non-unity roots (Q = %d):\n",known[maxQ].Q);        printp(known[maxQ]  ,extended_digits);
+        printf("\nMaximum number of real non-unity roots (R = %d):\n",known[maxR].R);           printp(known[maxR]  ,extended_digits);
+        printf("-----------------------------------------------------------------\n");
+    }
 
     // Polynomials found in the current session.
     std::vector<reciprocal_polynomial_t> candidates;
@@ -369,23 +407,11 @@ int main(int argc, char* argv[])
     printf("-----------------------------------------------------------------\n");
     fflush(stdout);
 
-    // Show final results on screen
-    for(std::size_t i = 0; i < verified.size(); i++)
-    {
-        reciprocal_polynomial_t& poly = verified[i];
-
-        //
-        // D M NNZ H L K U Q R Coefficients
-        //
-        printf("%2d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
-        for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",int(poly.coeffs[j]));
-
-        printf("\n");
-        fflush(stdout);
-    }
+    // Show list of verified polynomials on screen
+    for(std::size_t i = 0; i < verified.size(); i++)  printp(verified[i],extended_digits);
     printf("-----------------------------------------------------------------\n");
 
-    // Append final results to the file
+    // Append list of verified polynomials to the file
     if(verified.size() > 0)
     {
         FILE* foutput = NULL;
@@ -404,7 +430,7 @@ int main(int argc, char* argv[])
                 //
                 // D M NNZ H L K U Q R Coefficients
                 //
-                fprintf(foutput, "%2d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                fprintf(foutput, "%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
                 for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
                 fprintf(foutput,"\n");
                 fflush(foutput);
