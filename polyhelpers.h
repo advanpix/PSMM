@@ -41,6 +41,19 @@ inline int same_polynomial_found(int n, double mahler, double tolerance, std::ve
     return found;
 }
 
+inline void printp(const reciprocal_polynomial_t& poly, int digits = 72)
+{
+    //
+    // D M NNZ H L K U Q R Coefficients
+    //
+
+    printf("%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+    for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",int(poly.coeffs[j]));
+
+    printf("\n");
+    fflush(stdout);
+}
+
 inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomial_t& p, int bits = 256, int nthreads = 1)
 {
     //
@@ -79,73 +92,48 @@ inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomia
     }
 }
 
-inline void load_polynomials_old(const std::string& filename, std::vector<reciprocal_polynomial_t>& polynomials, int bits = 256)
+inline bool is_primitive_polynomial(const std::vector<double>& coeffs, std::vector<double>& divisors)
 {
-    std::ifstream ifs(filename);
+    divisors.clear();
 
-    if(ifs.is_open())
+    std::vector<int> degrees;
+    for(std::size_t i = 1; i < coeffs.size(); i++) // skip zero-degree
     {
-        std::string original_line, line;
-        while(std::getline(ifs,original_line))
-        {
-            line = f_trim(original_line);
-
-            std::vector<std::string> tokens;
-
-            f_remove_duplicates(line,' ');
-            f_split_string(line,' ',tokens);
-
-            if(tokens.size() > 2 && line[0] != '#') // skip invalid lines & comments
-            {
-                //
-                //
-                // This code is for text file in a format of Known180.gzip (downloaded from http://www.cecm.sfu.ca/~mjm/Lehmer/lists/Known180.gz)
-                // Table has spaces between coefficients.
-                // Only half of coefficients are stored.
-                //
-                // 0 - degree
-                // 1 - M Mahler measure
-                // 2 - K Number of roots outside the unit circle.
-                // [3 ... ] - Coefficients
-                //
-                // Example: 16  1.224278907222   2  1 1 0-1-1 0 1 1 1
-                //
-                reciprocal_polynomial_t poly;
-                std::vector<double>& coeffs = poly.coeffs;
-
-                poly.N  = atoi(tokens[0].c_str());
-
-                // Read the Mahler measure in extended precision and convert to double for fast computations later on.
-                mpf_init2(poly.F,bits);
-                str2mpf(poly.F,tokens[1].c_str());
-                poly.M  = mpf_get_d(poly.F);
-
-                poly.K  = atof(tokens[2].c_str());
-                coeffs.resize(poly.N/2+1);
-
-                std::size_t k = 0;
-                for(std::size_t i = 3; i < tokens.size(); i++)
-                    coeffs[k++] = atoi(tokens[i].c_str());  // k = [0..N/2]
-
-                if(k != (poly.N/2+1))
-                {
-                    printf("Parsing error, N = %d, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
-                    for(std::size_t i = 0; i < tokens.size(); i++)
-                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
-
-                    exit(1);
-                }
-
-                poly.nnz = 0;
-                for(std::size_t i = 1; i <= poly.N/2; i++)
-                    poly.nnz += (coeffs[i] != 0);
-
-                polynomials.push_back(poly);
-            }
-        }
-
-        ifs.close();
+        if(coeffs[i]!=0)
+            degrees.push_back(i);
     }
+
+    if(degrees.size() > 0)
+    {
+        int min_degree = degrees[0];
+
+        for(int i = 2; i <= min_degree; i++) // divisors can be [2, min_degree]
+        {
+            bool divisible = true;
+
+            for(std::size_t j = 0; j < degrees.size() && divisible; j++)
+            {
+                divisible = ((degrees[j] % i) == 0);
+            }
+
+            if(divisible)
+                divisors.push_back(i);
+        }
+    }
+
+    return (divisors.size() == 0);
+}
+
+inline bool is_primitive_reciprocal_polynomial(const std::vector<double>& coeffs, std::vector<double>& divisors)
+{
+    int N = 2 * (coeffs.size()-1);
+    std::vector<double> a(N+1);
+
+    // Expand coefficients to full polynomial
+    for(int k = 0; k <= N/2; k++) a[k]     = coeffs[k];
+    for(int k = 1; k <= N/2; k++) a[N/2+k] = a[N/2-k];
+
+    return is_primitive_polynomial(a,divisors);
 }
 
 inline void load_polynomials(const std::string& filename, std::vector<reciprocal_polynomial_t>& polynomials, int bits = 256)
@@ -212,6 +200,75 @@ inline void load_polynomials(const std::string& filename, std::vector<reciprocal
 
                     exit(1);
                 }
+
+                polynomials.push_back(poly);
+            }
+        }
+
+        ifs.close();
+    }
+}
+
+inline void load_polynomials_old(const std::string& filename, std::vector<reciprocal_polynomial_t>& polynomials, int bits = 256)
+{
+    std::ifstream ifs(filename);
+
+    if(ifs.is_open())
+    {
+        std::string original_line, line;
+        while(std::getline(ifs,original_line))
+        {
+            line = f_trim(original_line);
+
+            std::vector<std::string> tokens;
+
+            f_remove_duplicates(line,' ');
+            f_split_string(line,' ',tokens);
+
+            if(tokens.size() > 2 && line[0] != '#') // skip invalid lines & comments
+            {
+                //
+                //
+                // This code is for text file in a format of Known180.gzip (downloaded from http://www.cecm.sfu.ca/~mjm/Lehmer/lists/Known180.gz)
+                // Table has spaces between coefficients.
+                // Only half of coefficients are stored.
+                //
+                // 0 - degree
+                // 1 - M Mahler measure
+                // 2 - K Number of roots outside the unit circle.
+                // [3 ... ] - Coefficients
+                //
+                // Example: 16  1.224278907222   2  1 1 0-1-1 0 1 1 1
+                //
+                reciprocal_polynomial_t poly;
+                std::vector<double>& coeffs = poly.coeffs;
+
+                poly.N  = atoi(tokens[0].c_str());
+
+                // Read the Mahler measure in extended precision and convert to double for fast computations later on.
+                mpf_init2(poly.F,bits);
+                str2mpf(poly.F,tokens[1].c_str());
+                poly.M  = mpf_get_d(poly.F);
+
+                poly.K  = atof(tokens[2].c_str());
+                coeffs.resize(poly.N/2+1);
+
+                std::size_t k = 0;
+                for(std::size_t i = 3; i < tokens.size(); i++)
+                    coeffs[k++] = atoi(tokens[i].c_str());  // k = [0..N/2]
+
+                if(k != (poly.N/2+1))
+                {
+                    printf("Parsing error, N = %d, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
+                    for(std::size_t i = 0; i < tokens.size(); i++)
+                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+
+                    exit(1);
+                }
+
+                poly.nnz = 0;
+                for(std::size_t i = 1; i <= poly.N/2; i++)
+                    poly.nnz += (coeffs[i] != 0);
 
                 polynomials.push_back(poly);
             }
