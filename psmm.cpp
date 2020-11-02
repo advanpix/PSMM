@@ -57,12 +57,6 @@ int main(int argc, char* argv[])
     const int    extended_digits  = 72;
     const int    extended_prec    = std::ceil(extended_digits * log2(10)); // Use a bit higher precision for computations.
 
-    if(1)
-    {
-        convert_file("AllKnownAdvanpixOld", "AllKnownAdvanpix", extended_digits,extended_prec,8);
-        exit(1);
-    }
-
     ArgumentsParser args(argc,argv);
 
     if(
@@ -340,13 +334,6 @@ int main(int argc, char* argv[])
 
                             p.N  = degree;
                             p.coeffs.assign(&factor[0],&factor[degree/2+1]);
-
-                            //p.M  = mahler;
-                            //p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
-                            //p.nnz-=1;  // ignore the a[0] = 1, which is constant.
-
-                            // Compute mahler measure in extended precision for output.
-                            //compute_mahler_reciprocal_polynomial(p.F,p.coeffs,extended_prec,nthreads,&p.r);
 
                             compute_all_properties_of_reciprocal_polynomial(p,extended_prec,nthreads);
 
