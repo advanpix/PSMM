@@ -75,6 +75,11 @@ public:
         }
     }
 
+    std::size_t size()
+    {
+        return m_Arguments.size();
+    }
+    
 private:
     std::map<std::string,std::string> m_Arguments;
 };
