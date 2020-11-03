@@ -112,8 +112,8 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
     printf("\nMinimum Mahler measure:\n");
 
     for(std::size_t i = 0; i < std::min(std::size_t(20),poly.size()); i++)
-        printp(poly[i],extended_digits);        
-        
+        printp(poly[i],extended_digits);
+
     //
     // Compute and show some statistics
     //

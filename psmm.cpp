@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
         //
         //    psmm -known=AllKnown
         //
-        
+
         show_statistics_of_polynomials(args.getArgValue("known"),extended_prec,extended_digits);
     }
     else
