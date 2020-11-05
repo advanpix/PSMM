@@ -111,9 +111,9 @@ int main(int argc, char* argv[])
         int period         = args.argSupplied("period")     ? std::stoi(args.getArgValue("period"))     : 5;  // Show progress report every "period" of seconds
         int verbosity      = args.argSupplied("verbosity")  ? std::stoi(args.getArgValue("verbosity"))  : 1;  // 1 - simple report, 2 - extended with statistics
 
-        if(degree & 1)
+        if((degree & 1) || degree <= 0)
         {
-            puts("Polynomial degree must be even.");
+            puts("Polynomial degree must be even and positive.");
             return EXIT_FAILURE;
         }
 
