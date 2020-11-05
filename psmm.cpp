@@ -32,13 +32,18 @@ int main(int argc, char* argv[])
     //
     // This might be too high for high-order polynomials since their Mahler measures are clustered more densely.
     //
-    // EXAMPLE. There are two different polynomials of 138 and 180 degrees which
+    // EXAMPLE 1. There are two different polynomials of 138 and 180 degrees which
     //     have the same Mahler measure up to 11 digits after the comma:
     //
-    //     180 1.25282688286[4]667557461368123141605672483501189167102619478483990743452812 40 1 1 1 0 0 -1 -1 -1 0 0 0 0 0 0 0 1 1 1 0 0 -1 -1 -1 0 0 0 0 0 0 0 1 1 1 1 1 0 -1 -1 -1 -1 -1 0 0 0 0 1 1 1 1 1 0 -1 -1 -1 -1 -1 0 0 0 0 1 0 0 0 1 0 0 0 0 -1 -1 0 0 0 0 1 0 0 0 1 0 0 0 0 -1 -1 0 0 0 0 1
-    //     138 1.25282688286[8]347583989529787618964056215870696871794089089602385130202388 15 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1
+    //     180 1.25282688286[4]667557461368123141605672483501189167102619478483990743452812 40 1 81 20 140 40 0 1 1 1 0 0 -1 -1 -1 0 0 0 0 0 0 0 1 1 1 0 0 -1 -1 -1 0 0 0 0 0 0 0 1 1 1 1 1 0 -1 -1 -1 -1 -1 0 0 0 0 1 1 1 1 1 0 -1 -1 -1 -1 -1 0 0 0 0 1 0 0 0 1 0 0 0 0 -1 -1 0 0 0 0 1 0 0 0 1 0 0 0 0 -1 -1 0 0 0 0 1
+    //     138 1.25282688286[8]347583989529787618964056215870696871794089089602385130202388 3 1 7 15 108 28 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1
     //
     //     If we would store these values with the accuracy of 12 digits only (Known180) then these two values would be considered the same for high tolerances like 1e-10 or 1e-11.
+    //
+    // EXAMPLE 2.
+    //
+    //     214 1.2857117920[6]7308994496869974333734988823588105122313807358079920158251959 2 1 5 34 146 68 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1
+    //     158 1.2857117920[9]6690828765613523071678857629755985708260720994246701583641435 2 1 5 26 106 52 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1
     //
     // Expectedly, there are many such polynomials probably with even smaller difference.
     // Therefore we do not recommend using Known180 because of limited number of digits stored.
