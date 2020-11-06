@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     // EXAMPLE 3.
     //
     //     196 1.285872662[7]28973405119892725557620131473130201981020148720083571083521939 2 1 5 27 142 52 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1
-    //     216 1.285872662[8]03832621268592047312148080780963659492447295128617130559423450 48 1 97 36 144 72 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 0 0 1 -1 0 0 -1 0 0 0 0 1 0 0 1 -1 0 0 -1 0 0 0 0 1 0 0 1 -1 0 0 -1 0 0 0 0 1     
+    //     216 1.285872662[8]03832621268592047312148080780963659492447295128617130559423450 48 1 97 36 144 72 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 -1 1 0 -1 1 -1 0 0 0 0 0 1 0 0 1 -1 0 0 -1 0 0 0 0 1 0 0 1 -1 0 0 -1 0 0 0 0 1 0 0 1 -1 0 0 -1 0 0 0 0 1
     //
     // Expectedly, there are many such polynomials probably with even smaller difference.
     // Therefore we do not recommend using Known180 because of limited number of digits stored.
@@ -63,8 +63,8 @@ int main(int argc, char* argv[])
     // References.
     // 1. http://www.cecm.sfu.ca/~mjm/Lehmer/lists/
     //
-    const int    search_accuracy  = 15;    // Request MPSolve to compute roots with this number of correct digits during the search phase.
-    const double search_tolerance = 1e-14; // Must be ~pow(10,-(search_accuracy-1)). We assume polynomials are different if |M(p1)-M(p2)| > search_tolerance.
+    const double search_tolerance = 1e-14; // We use 64-bits of precision in MPSolve, so that our roots must have full "double" precision accuracy (53-bits).
+                                           // From our experiments, 1e-14 is the lowest correct tolerance for "double" precision. It is good enough for now, but in future we need to use true extended precision for search.
 
     const int    extended_digits  = 72;
     const int    extended_prec    = std::ceil(extended_digits * log2(10)); // Use a bit higher precision for computations.
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
     {
         //
         // Run search:
-        //    psmm -degree=N -coeffs=-1,1 -threshold=1.3 -nnz=1,2,3,4 -threads=3 -period=5 -known=AllKnown -addto=AllKnown -verbosity=2
+        //    psmm -degree=N -coeffs=-1,1 -threshold=1.3 -nnz=1,2,3,4 -threads=3 -period=5 -known=AllKnown -addto=AllKnown
         //
 
         if(
@@ -97,7 +97,7 @@ int main(int argc, char* argv[])
             // Example:
             //
             // Run search:
-            //    psmm -degree=N -coeffs=-1,1 -threshold=1.3 -nnz=1,2,3,4 -threads=3 -period=5 -known=AllKnown -addto=AllKnown -verbosity=2
+            //    psmm -degree=N -coeffs=-1,1 -threshold=1.3 -nnz=1,2,3,4 -threads=3 -period=5 -known=AllKnown -addto=AllKnown
             //
             // Show statistics:
             //    psmm -known=AllKnown
@@ -114,7 +114,6 @@ int main(int argc, char* argv[])
         std::string faddto = args.getArgValue("addto");                 // File to add the found polynomials, usually the same as "load"
         int nthreads       = args.argSupplied("threads")    ? std::stoi(args.getArgValue("threads"))    : 1;  // CPU threads to use (1 by default).
         int period         = args.argSupplied("period")     ? std::stoi(args.getArgValue("period"))     : 5;  // Show progress report every "period" of seconds
-        int verbosity      = args.argSupplied("verbosity")  ? std::stoi(args.getArgValue("verbosity"))  : 1;  // 1 - simple report, 2 - extended with statistics
 
         if((degree & 1) || degree <= 0)
         {
@@ -208,7 +207,7 @@ int main(int argc, char* argv[])
                     if(!skip)
                     {
                         // Find roots, compute Mahler measure and handle the result.
-                        double mahler = compute_mahler_reciprocal_polynomial(poly,search_accuracy,nthreads); // Estimate Mahler measure in double precision (fast).
+                        double mahler = compute_mahler_reciprocal_polynomial_d(poly,nthreads); // Estimate Mahler measure in double precision (fast).
 
                         if(mahler > 1.0 && mahler <= threshold)
                         {
@@ -350,7 +349,7 @@ int main(int argc, char* argv[])
                     // Find roots, compute Mahler measure and handle the result.
                     // Factors are stored with full set of coefficients, therefore we compute Mahler for full set of coefficients.
                     //
-                    double mahler = compute_mahler_general_polynomial(factor,search_accuracy,nthreads);
+                    double mahler = compute_mahler_general_polynomial_d(factor,nthreads);
 
                     if(mahler > 1.0 && mahler <= threshold)
                     {
