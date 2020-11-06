@@ -25,10 +25,9 @@ extern "C" void mps_thread_pool_set_concurrency_limit(void * s, void * pool, uns
 //
 // One-shot simple version with re-allocations on each call.
 //
-inline int mpsolve_find_all_roots(int n, const double* coeffs, double* wr, double* wi, double* residuals, int digits = 15, int nthreads = 1)
+inline int mpsolve_find_all_roots_d(int n, const double* coeffs, double* wr, double* wi, double* residuals, int nthreads = 1)
 {
     int error = 0;
-    const double log2_10 = 3.3219280948873624;
 
     mps_context* s = mps_context_new();
     mps_polynomial* poly = (mps_polynomial*)mps_monomial_poly_new(s,n);
@@ -37,7 +36,7 @@ inline int mpsolve_find_all_roots(int n, const double* coeffs, double* wr, doubl
         mps_monomial_poly_set_coefficient_d(s,(mps_monomial_poly*)poly,i,coeffs[i],0.0);
 
     mps_context_set_input_poly            (s, poly);
-    mps_context_set_output_prec           (s, std::ceil(digits * log2_10));
+    mps_context_set_output_prec           (s,   64); // We use full limb in GMP ("double" precision = 53 bits for mantissa).
     mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
     mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
     mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
@@ -65,10 +64,10 @@ inline int mpsolve_find_all_roots(int n, const double* coeffs, double* wr, doubl
 // Computes Mahler measure of polynomial with the accuracy specified.
 // Also returns roots (real & imaginary parts) and residuals for each root.
 //
-inline double mpsolve_compute_mahler(int n, const double* coeffs, double* wr, double* wi, double* residuals, int digits = 15, int nthreads = 1)
+inline double mpsolve_compute_mahler_d(int n, const double* coeffs, double* wr, double* wi, double* residuals, int nthreads = 1)
 {
     double mahler = 0;
-    int error = mpsolve_find_all_roots(n,coeffs,wr,wi,residuals,digits,nthreads);
+    int error = mpsolve_find_all_roots_d(n,coeffs,wr,wi,residuals,nthreads);
 
     if(error == 0)
     {
@@ -85,7 +84,7 @@ inline double mpsolve_compute_mahler(int n, const double* coeffs, double* wr, do
     return mahler;
 }
 
-inline double compute_mahler_general_polynomial(const std::vector<double>& coeffs, int digits = 15, int nthreads = 1)
+inline double compute_mahler_general_polynomial_d(const std::vector<double>& coeffs, int nthreads = 1)
 {
     int N = (coeffs.size()-1);
 
@@ -93,7 +92,7 @@ inline double compute_mahler_general_polynomial(const std::vector<double>& coeff
     double* WI  = (double*)std::malloc(N*sizeof(double));
     double* RE  = (double*)std::malloc(N*sizeof(double));
 
-    double mahler = mpsolve_compute_mahler(N,coeffs.data(), WR, WI, RE, digits, nthreads);
+    double mahler = mpsolve_compute_mahler_d(N,coeffs.data(), WR, WI, RE, nthreads);
 
     std::free(WR);
     std::free(WI);
@@ -102,7 +101,7 @@ inline double compute_mahler_general_polynomial(const std::vector<double>& coeff
     return mahler;
 }
 
-inline double compute_mahler_reciprocal_polynomial(const std::vector<double>& coeffs, int digits = 15, int nthreads = 1)
+inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& coeffs, int nthreads = 1)
 {
     int N = 2 * (coeffs.size()-1);
     std::vector<double> a(N+1);
@@ -111,7 +110,7 @@ inline double compute_mahler_reciprocal_polynomial(const std::vector<double>& co
     for(int k = 0; k <= N/2; k++) a[k]     = coeffs[k];
     for(int k = 1; k <= N/2; k++) a[N/2+k] = a[N/2-k];
 
-    return compute_mahler_general_polynomial(a, digits, nthreads);
+    return compute_mahler_general_polynomial_d(a, nthreads);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +170,7 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
         //
         // We do all the computations with extra_precision
         // Only final result is returned with target_precision.
-        //        
+        //
         mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
         mpc_vinit2(results,n,extra_precision);
 
@@ -183,7 +182,7 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
         mpf_init2(d,  extra_precision);
         mpf_init2(r,  extra_precision);
         mpf_init2(eps,extra_precision);
-        
+
         //
         // Compute machine epsilon for the requested precision, machine epsilon = 2^-(target_precision-1)
         // Machine epsilon is used as tolerance in checking the closeness of floating point numbers.
