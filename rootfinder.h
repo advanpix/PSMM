@@ -123,7 +123,16 @@ inline double compute_mahler_reciprocal_polynomial(const std::vector<double>& co
 //
 // One-shot simple version with re-allocations on each call.
 //
-inline int mpsolve_compute_mahler_with_properties(mpf_ptr m, int n, const double* coeffs, std::size_t& K, std::size_t& U, std::size_t& Q, std::size_t& R, int bits = 256, int nthreads = 1)
+inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,                   // Mahler measure of the polynomial
+                                                  int n,                            // Polynomial degree
+                                                  const double* coeffs,             // Full polynomial coefficients: a[0],...,a[n]
+                                                  std::size_t& K,                   // Number of roots outside the unit circle.
+                                                  std::size_t& U,                   // Number of complex unity roots (go in pairs):           z = exp(i*t), z* = exp(-i*t).
+                                                  std::size_t& Q,                   // Number of complex non-unity roots (go in quadruplets): z = r*exp(i*t), z* = r*exp(-i*t), 1/z = (1/r)*exp(-i*t), 1/z* = (1/r)*exp(i*t).
+                                                  std::size_t& R,                   // Number of real non-unity roots (go in pairs):          z = r, z = 1/r.
+                                                  int target_precision = 256,       // Precision to use for root finding and analysis.
+                                                  int nthreads = 1                  // Number of threads to use in root finder.
+                                                 )
 {
     int error = 0;
 
@@ -133,8 +142,18 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr m, int n, const double
     for(int i = 0; i <= n; i++)
         mps_monomial_poly_set_coefficient_d(s,(mps_monomial_poly*)poly,i,coeffs[i],0.0);
 
+    //
+    // MPSolve uses GMP as extended precision engine.
+    // Internally GMP does calculations with precision = number of full limbs. So that, if we request 230 bits of precision, GMP will use full 256 anyway.
+    // Therefore, it is better to use precision = integer multiplier of 64 (= size of limb on x64 CPU).
+    //
+    // Moreover, we want to make sure roots are accurate to the full precision requested (target_precision).
+    // Hence we add one more extra-limb of precision ("guard precision" so to speak). This ensures MPSolve provides high-accuracy roots.
+    //
+    int extra_precision = (std::ceil(target_precision/double(64)) + 1) * 64;
+
     mps_context_set_input_poly            (s, poly);
-    mps_context_set_output_prec           (s, bits);
+    mps_context_set_output_prec           (s, extra_precision);
     mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
     mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
     mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
@@ -149,59 +168,58 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr m, int n, const double
         Q = 0;  // Number of complex non-unity roots (go in quadruplets): z = r*exp(i*t), z* = r*exp(-i*t), 1/z = (1/r)*exp(-i*t), 1/z* = (1/r)*exp(i*t).
         R = 0;  // Number of real non-unity roots (go in pairs):          z = r, z = 1/r.
 
+        //
+        // We do all the computations with extra_precision
+        // Only final result is returned with target_precision.
+        //        
         mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
-        mpc_vinit2(results,n,bits);
+        mpc_vinit2(results,n,extra_precision);
 
         mps_context_get_roots_m(s, &results, NULL);
 
-        mpf_t mahler, rabs, temp, delta, macheps;
-        mpf_init2(mahler,bits);
-        mpf_init2(rabs,  bits);
-        mpf_init2(temp,  bits);
-        mpf_init2(delta, bits);
+        mpf_t m, r, t, d, eps;
+        mpf_init2(m,  extra_precision);
+        mpf_init2(t,  extra_precision);
+        mpf_init2(d,  extra_precision);
+        mpf_init2(r,  extra_precision);
+        mpf_init2(eps,extra_precision);
+        
+        //
+        // Compute machine epsilon for the requested precision, machine epsilon = 2^-(target_precision-1)
+        // Machine epsilon is used as tolerance in checking the closeness of floating point numbers.
+        // Please note, computed roots have higher precision (see above), but we operate with initially requested precision "target_precision".
+        //
+        mpf_set_ui(eps,1);
+        mpf_div_2exp(eps,eps,std::max(1,(target_precision-1)));
 
-        //
-        // Compute machine epsilon for the requested precision, machine epsilon = 2^-(bits-1)
-        // Please note, GMP operates by limbs, so that actual number of bits used is >= bits.
-        //
-        // Machine epsilon is used as tolerance in checking the closeness of floating point numbers. 
-        // This is fine when bits is not a multiple of GMP's limbs (internal GMP precision > bits).
-        // But might be a problem when internal GMP precision == bits.
-        //
-        // That is why we skip the last decimal digit and use macheps = 2^-(bits-1-ceil(log2(10))) = 2^-(bits-5).
-        //
-        mpf_init2(macheps,bits);
-        mpf_set_ui(macheps,1);
-        mpf_div_2exp(macheps,macheps,std::max(5,(bits-5)));
-
-        mpf_set_si(mahler,1);
+        mpf_set_si(m,1);
         for(int i = 0; i < n; i++)
         {
             //
-            // Root magnitude: rabs = sqrt(x^2+y^2)
-            // We use brute-force algorithm, but will have to implement proper hypot in future.
+            // Root magnitude: r = sqrt(x^2+y^2)
+            // We use naive textbook algorithm, but we will have to implement proper hypot in future.
             //
-            mpf_mul (temp, mpc_Re(results[i]), mpc_Re(results[i]));
-            mpf_mul (rabs, mpc_Im(results[i]), mpc_Im(results[i]));
-            mpf_add (rabs, rabs, temp);
-            mpf_sqrt(rabs, rabs);
+            mpf_mul (t, mpc_Re(results[i]), mpc_Re(results[i])); // t = x^2
+            mpf_mul (r, mpc_Im(results[i]), mpc_Im(results[i])); // r = y^2
+            mpf_add (r, r, t);                                   // r = x^2+y^2
+            mpf_sqrt(r, r);                                      // r = sqrt(x^2+y^2)
 
-            if(mpf_cmp_si(rabs,1) > 0)
-            {
-                mpf_mul(mahler,mahler,rabs);
-                K++;
-            }
-
-            mpf_sub_ui(delta,rabs,1);
-            mpf_abs(delta,delta);
-            if(mpf_cmp(delta,macheps) < 0)  // ||z|-1| < macheps
+            mpf_sub_ui(d,r,1);
+            mpf_abs(d,d);
+            if(mpf_cmp(d,eps) <= 0)  // ||z|-1| < eps
             {
                 U++; // unity root
             }
             else
             {
-                mpf_abs(delta,mpc_Im(results[i]));
-                if(mpf_cmp(delta,macheps) < 0) // |Im(z)| < macheps
+                if(mpf_cmp_si(r,1) > 0) // |z| > 1 && ||z|-1| > eps
+                {
+                    mpf_mul(m,m,r); // use for Mahler measure computation.
+                    K++;
+                }
+
+                mpf_abs(d,mpc_Im(results[i]));
+                if(mpf_cmp(d,eps) < 0) // |Im(z)| < eps
                 {
                     R++; // real non-unity root
                 }
@@ -212,10 +230,10 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr m, int n, const double
             }
         }
 
-        mpf_init2(m,mpf_get_prec(mahler));
-        mpf_set(m,mahler);
+        mpf_init2(mahler,target_precision);
+        mpf_set(mahler,m);
 
-        mpf_clears(mahler,rabs,temp,delta,macheps,NULL);
+        mpf_clears(m,r,t,d,eps,NULL);
 
         mpc_vclear(results,n);
         std::free(results);
