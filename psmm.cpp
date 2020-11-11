@@ -68,7 +68,8 @@ int main(int argc, char* argv[])
 
     const int    extended_digits  = 72;
     const int    extended_prec    = std::ceil(extended_digits * log2(10)); // Use a bit higher precision for computations.
-
+    const int    verify_digits    = std::floor(extended_prec-3*log2(10));  // Ignore three last decimal digits (to avoid rounding errors)
+    
     ArgumentsParser args(argc,argv);
 
     if(args.size() == 1 && args.argSupplied("known"))
@@ -331,9 +332,21 @@ int main(int argc, char* argv[])
                 //
                 compute_all_properties_of_reciprocal_polynomial(candidate,extended_prec,nthreads);
 
-                verified.push_back(candidate);
-                success_irreducible_polynomials++;
-                success_factors_total++;
+                //
+                // Do the last verification step in extended precision.
+                //
+                if(mpf_cmp_si(candidate.F,1) > 0)
+                {
+                    bool found_m = (same_polynomial_found_m(candidate.N, candidate.F, verify_digits, verified) == 1) || 
+                                   (same_polynomial_found_m(candidate.N, candidate.F, verify_digits, known   ) == 1);
+                                   
+                    if(!found_m)
+                    {
+                        verified.push_back(candidate);
+                        success_irreducible_polynomials++;
+                        success_factors_total++;
+                    }
+                }
             }
             else
             {
@@ -370,8 +383,20 @@ int main(int argc, char* argv[])
 
                                 compute_all_properties_of_reciprocal_polynomial(p,extended_prec,nthreads);
 
-                                verified.push_back(p);
-                                success_factors_total++;
+                                //
+                                // Do the last verification step in extended precision.
+                                //
+                                if(mpf_cmp_si(p.F,1) > 0)
+                                {
+                                    bool found_m = (same_polynomial_found_m(p.N, p.F, verify_digits, verified) == 1) || 
+                                                   (same_polynomial_found_m(p.N, p.F, verify_digits, known   ) == 1);
+
+                                    if(!found_m)
+                                    {
+                                        verified.push_back(p);
+                                        success_factors_total++;
+                                    }
+                                }
                             }
                         }
                     }

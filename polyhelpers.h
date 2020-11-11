@@ -41,6 +41,44 @@ inline int same_polynomial_found(int n, double mahler, double tolerance, std::ve
     return found;
 }
 
+inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision, std::vector<reciprocal_polynomial_t>& polynomials)
+{
+    //
+    // We assume that p.F is computed
+    //
+    
+    mpf_t m, d, eps;
+    
+    mpf_init2(m  ,comp_precision);
+    mpf_init2(d  ,comp_precision);
+    mpf_init2(eps,comp_precision);
+    
+    mpf_set_si(m,1);
+    
+    mpf_set_ui(eps,1);
+    mpf_div_2exp(eps,eps,std::max(1,(comp_precision-1)));
+
+    for(std::size_t i = 0; i < polynomials.size(); i++)
+    {
+        reciprocal_polynomial_t& p = polynomials[i];
+
+        if(p.N <= n)
+        {
+            mpf_sub(d,mahler,p.F);
+            mpf_abs(d,d);
+            
+            if(mpf_cmp(d,m) <= 0)
+                mpf_set(m,d);
+        }
+    }
+
+    int found = (mpf_cmp(m,eps) <= 0);
+    
+    mpf_clears(m,d,eps,NULL);
+    
+    return found;
+}
+
 inline void printp(const reciprocal_polynomial_t& poly, int digits = 72)
 {
     //
