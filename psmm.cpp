@@ -82,12 +82,12 @@ int main(int argc, char* argv[])
 
         show_statistics_of_polynomials(args.getArgValue("known"),extended_prec,extended_digits);
     }
-    else if(args.size() == 1 && args.argSupplied("merge"))
+    else if(args.size() == 2 && args.argSupplied("merge") && args.argSupplied("output"))
     {
         //
         // Merge several input files into final results.
         //
-        //    psmm -merge=file0,file1,file2,...,fileN
+        //    psmm -merge=file0,file1,file2,...,fileN -output=AllKnown
         //
         // Read all input files, use file with lowest degree as starting and then add unique results from other files.
         //
@@ -421,8 +421,8 @@ int main(int argc, char* argv[])
         }
 
         // Sort list of cleaned-up results by degree & Mahler measure.
-        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return a.M < b.M;}); // by Mahler
-        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (a.M < b.M)); }); // by degree
+        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F,b.F) < 0);}); // by Mahler
+        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); }); // by degree
 
         auto main_loop_stop = std::chrono::high_resolution_clock::now();
         mpz_set_ui(time_elapsed,std::chrono::duration_cast<std::chrono::seconds>(main_loop_stop-main_loop_start).count());
