@@ -130,11 +130,20 @@ public:
 
     bool skip_next_polynomial()
     {
-        bool skip = false;
+        //
+        // Skip non-primitive polynomials. Primitiveness is independent from coefficients and can be deduced directly from pattern.
+        // So that primitiveness can be checked in "next_pattern".
+        // However we do it here because we want to measure total iteration speed over the search space.
+        //
 
-        if(m_MirroredCoeffs)
+        bool skip = !m_PrimitivePattern;
+
+        if(!skip && m_MirroredCoeffs)
         {
-            if(m_EvenPattern)
+            //
+            // Skip polynomials which have the same M(p) as previousely checked.
+            //
+            if(m_EvenPattern) // We keep this for historical reasons. Since m_EvenPattern is automatically equivalent to non-primitive pattern (which is already taken care of above).
             {
                 // Build number for polynomial P(ix)
                 std::size_t j = 0;
@@ -153,6 +162,7 @@ public:
             }
             else
             {
+                // At least one odd-degree coefficient is non-zero, then investigate P(-x).
                 // Build number for polynomial P(-x)
                 std::size_t j = 0;
                 for(std::size_t i = 0; i < m_Pattern.size(); i++)
@@ -227,13 +237,36 @@ private:
 
     void analyze_pattern()
     {
+        std::vector<int> degrees, divisors;
+
         // Checks if pattern/polynomial includes only even degree coefficients.
         m_EvenPattern = true;
-        for(std::size_t i = 0; i < m_Pattern.size() && m_EvenPattern; i++)
+        for(int i = 0; i < m_Pattern.size(); i++)
         {
             if(m_Pattern[i]!=0)
-                m_EvenPattern = (((i+1)&1) == 0);
+            {
+                m_EvenPattern = m_EvenPattern && (((i+1)&1) == 0);
+                degrees.push_back(i+1);
+            }
         }
+
+        degrees.push_back(m_Degree); // The highest degree is not included in the m_Pattern, we must add it manually.
+
+        // Checks if pattern/polynomial is primitive.
+        for(int i = 2; i <= degrees[0]; i++) // non-trivial divisors can be [2, min_degree=degrees[0]]
+        {
+            bool divisible = true;
+
+            for(std::size_t j = 0; j < degrees.size() && divisible; j++)
+            {
+                divisible = ((degrees[j] % i) == 0);
+            }
+
+            if(divisible)
+                divisors.push_back(i);
+        }
+
+        m_PrimitivePattern = (divisors.size() == 0);
     }
 
 private:
@@ -244,7 +277,10 @@ private:
     std::map<int,int>   m_CoeffsIndices; // maps coefficients into their indices in m_PossibleCoeffs
 
     // Internal state of the iterator.
-    std::vector<int> m_Pattern;  // Sparse pattern, =1 indicates the locations of non-zero polynomial coefficients. Length = n/2+1
+    std::vector<int> m_Pattern;  // Sparse pattern, =1 indicates the locations of non-zero polynomial coefficients. Length = n/2.
+                                 // The 0-degree coefficient is always = 1, hence we ignore it in m_Pattern.
+                                 // So that m_Pattern[i] correspond to (i+1) degree coefficient.
+
     std::vector<int> m_Number;   // Current combination of coefficients from the list of possible values. Length = number of nonzeros.
     int m_Base;
     bool m_Status;
@@ -252,7 +288,9 @@ private:
     // Polynomial coefficients analysis
     bool m_MirroredCoeffs;
     bool m_EvenPattern;
+    bool m_PrimitivePattern;
     std::vector<int> m_TransformedNumber;
+
 };
 
 #endif // __PSMM_RECIPROCAL_POLYNOMIALS_ITERATOR_H__
