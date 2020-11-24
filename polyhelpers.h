@@ -46,15 +46,15 @@ inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision,
     //
     // We assume that p.F is computed
     //
-    
+
     mpf_t m, d, eps;
-    
+
     mpf_init2(m  ,comp_precision);
     mpf_init2(d  ,comp_precision);
     mpf_init2(eps,comp_precision);
-    
+
     mpf_set_si(m,1);
-    
+
     mpf_set_ui(eps,1);
     mpf_div_2exp(eps,eps,std::max(1,(comp_precision-1)));
 
@@ -66,16 +66,16 @@ inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision,
         {
             mpf_sub(d,mahler,p.F);
             mpf_abs(d,d);
-            
+
             if(mpf_cmp(d,m) <= 0)
                 mpf_set(m,d);
         }
     }
 
     int found = (mpf_cmp(m,eps) <= 0);
-    
+
     mpf_clears(m,d,eps,NULL);
-    
+
     return found;
 }
 
@@ -164,5 +164,66 @@ inline void load_polynomials(const std::string& filename, std::vector<reciprocal
         ifs.close();
     }
 }
+
+inline void merge_files_with_results(const std::string& input, const std::string& output, int verify_precision, int output_digits, int precision = 256)
+{
+    // Parse the filenames
+    std::vector<std::string> filenames;
+    f_split_string(input,',',filenames);
+
+    // Read all files and merge all polynomials in one big list.
+    std::vector<reciprocal_polynomial_t> polynomials;
+    for(std::size_t i = 0; i < filenames.size(); i++)
+    {
+        load_polynomials(filenames[i],polynomials,precision);
+    }
+
+    // Sort list of merged polynomials by degree & Mahler measure.
+    std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F,b.F) < 0); });
+    std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); });
+
+    // Add unique polynomials from lowest to highest degree to final list of results.
+    std::vector<reciprocal_polynomial_t> verified;
+    for(std::size_t i = 0; i < polynomials.size(); i++)
+    {
+        reciprocal_polynomial_t& p = polynomials[i];
+        if(!same_polynomial_found_m(p.N, p.F, verify_precision, verified)) 
+            verified.push_back(p);
+    }
+    
+    if(verified.size() > 0)
+    {
+        FILE* foutput = NULL;
+
+        if(!output.empty())
+            foutput = fopen(output.c_str(),"w"); // Re-writes existing file
+
+        if(foutput != NULL)
+        {
+            int prev_degree = 0;
+            for(std::size_t i = 0; i < verified.size(); i++)
+            {
+                reciprocal_polynomial_t& poly = verified[i];
+
+                if(prev_degree != poly.N)
+                {
+                   prev_degree = poly.N;                    
+                   fprintf(foutput,"\n"); 
+                }
+               
+                //
+                // D M NNZ H L K U Q R Coefficients
+                //
+                fprintf(foutput, "%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
+                fprintf(foutput,"\n");
+                fflush(foutput);
+            }
+
+            fclose(foutput);
+        }
+    }
+ }
+
 
 #endif // __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__

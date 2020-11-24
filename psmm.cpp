@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
     const int    extended_digits  = 72;
     const int    extended_prec    = std::ceil(extended_digits * log2(10)); // Use a bit higher precision for computations.
-    const int    verify_digits    = std::floor(extended_prec-3*log2(10));  // Ignore three last decimal digits (to avoid rounding errors)
+    const int    verify_prec      = std::floor(extended_prec-3*log2(10));  // Ignore three last decimal digits (to avoid rounding errors)
 
     ArgumentsParser args(argc,argv);
 
@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
         //
         // Read all input files, use file with lowest degree as starting and then add unique results from other files.
         //
-        show_statistics_of_polynomials(args.getArgValue("known"),extended_prec,extended_digits);
+        merge_files_with_results(args.getArgValue("merge"),args.getArgValue("output"),verify_prec,extended_digits,extended_prec);
     }
     else
     {
@@ -349,8 +349,8 @@ int main(int argc, char* argv[])
                 //
                 if(mpf_cmp_si(candidate.F,1) > 0)
                 {
-                    bool found_m = (same_polynomial_found_m(candidate.N, candidate.F, verify_digits, verified) == 1) ||
-                                   (same_polynomial_found_m(candidate.N, candidate.F, verify_digits, known   ) == 1);
+                    bool found_m = (same_polynomial_found_m(candidate.N, candidate.F, verify_prec, verified) == 1) ||
+                                   (same_polynomial_found_m(candidate.N, candidate.F, verify_prec, known   ) == 1);
 
                     if(!found_m)
                     {
@@ -400,8 +400,8 @@ int main(int argc, char* argv[])
                                 //
                                 if(mpf_cmp_si(p.F,1) > 0)
                                 {
-                                    bool found_m = (same_polynomial_found_m(p.N, p.F, verify_digits, verified) == 1) ||
-                                                   (same_polynomial_found_m(p.N, p.F, verify_digits, known   ) == 1);
+                                    bool found_m = (same_polynomial_found_m(p.N, p.F, verify_prec, verified) == 1) ||
+                                                   (same_polynomial_found_m(p.N, p.F, verify_prec, known   ) == 1);
 
                                     if(!found_m)
                                     {
