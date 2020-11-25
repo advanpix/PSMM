@@ -89,7 +89,8 @@ int main(int argc, char* argv[])
         //
         //    psmm -merge=file0,file1,file2,...,fileN -output=AllKnown
         //
-        // Read all input files, use file with lowest degree as starting and then add unique results from other files.
+        // Read all input files, sort the results by degree and M(p) and remove duplicate results.
+        // This mode is very imnportant as it allows to search polynomials of different degrees in parallel (and remove duplicate results later on).
         //
         merge_files_with_results(args.getArgValue("merge"),args.getArgValue("output"),verify_prec,extended_digits,extended_prec);
     }
@@ -454,7 +455,14 @@ int main(int argc, char* argv[])
             if(foutput != NULL)
             {
                 fprintf(foutput,"\n");
-                fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %I64u polynomials\n",args.getArgValue("coeffs").c_str(),args.getArgValue("nnz").c_str(),total_time_elapsed.c_str(),verified.size());
+                fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %I64u polynomials (target degree = %I64u, lower degree = %I64u)\n",
+                            args.getArgValue("coeffs").c_str(),
+                            args.getArgValue("nnz").c_str(),
+                            total_time_elapsed.c_str(),
+                            verified.size(),
+                            success_irreducible_polynomials,
+                            success_factors_total-success_irreducible_polynomials);
+
                 for(std::size_t i = 0; i < verified.size(); i++)
                 {
                     reciprocal_polynomial_t& poly = verified[i];
