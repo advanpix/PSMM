@@ -283,7 +283,7 @@ int main(int argc, char* argv[])
 
                         std::string time_left_str = sec2yhms(time_left,years,days,hours,minutes,seconds);
 
-                        printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %d,\tFOUND = %I64u\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,candidates.size(),time_left_str.c_str());
+                        printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %d,\tFOUND = %zu\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,candidates.size(),time_left_str.c_str());
 
                         last_report_time = current_time;
                         polys_per_report = 0;
@@ -300,9 +300,9 @@ int main(int argc, char* argv[])
         printf("Nonzeros              = %s\n",args.getArgValue("nnz").c_str());
         printf("Threshold             = %s\n",args.getArgValue("threshold").c_str());
         printf("Polynomials Total     = %s\n",mpz2string(total_number_of_polynomials).c_str());
-        printf("Polynomials Checked   = %I64u\n",polynomials_processed);
+        printf("Polynomials Checked   = %zu\n",polynomials_processed);
         printf("-----------------------------------------------------------------\n");
-        printf("Polynomials Selected  = %I64u\t(M(p) <= threshold)\n",candidates.size());
+        printf("Polynomials Selected  = %zu\t(M(p) <= threshold)\n",candidates.size());
         fflush(stdout);
 
 
@@ -429,12 +429,12 @@ int main(int argc, char* argv[])
         mpz_set_ui(time_elapsed,std::chrono::duration_cast<std::chrono::seconds>(main_loop_stop-main_loop_start).count());
         std::string total_time_elapsed = sec2yhms(time_elapsed,years,days,hours,minutes,seconds);
 
-        printf("--- Reducible         = %I64u\n",reducible_polynomials);
-        printf("--- Factors Checked   = %I64u\n",factors_checked);
+        printf("--- Reducible         = %zu\n",reducible_polynomials);
+        printf("--- Factors Checked   = %zu\n",factors_checked);
         printf("-----------------------------------------------------------------\n");
-        printf("Polynomials Found     = %I64u\t(M(p) <= threshold)\n",verified.size());
-        printf("--- Target degree     = %I64u\n",success_irreducible_polynomials);
-        printf("--- Lower Degree      = %I64u\n",success_factors_total-success_irreducible_polynomials);
+        printf("Polynomials Found     = %zu\t(M(p) <= threshold)\n",verified.size());
+        printf("--- Target degree     = %zu\n",success_irreducible_polynomials);
+        printf("--- Lower Degree      = %zu\n",success_factors_total-success_irreducible_polynomials);
         printf("-----------------------------------------------------------------\n");
         printf("Elapsed Time          = %s\n",total_time_elapsed.c_str());
         printf("-----------------------------------------------------------------\n");
@@ -455,7 +455,7 @@ int main(int argc, char* argv[])
             if(foutput != NULL)
             {
                 fprintf(foutput,"\n");
-                fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %I64u polynomials (target degree = %I64u, lower degree = %I64u)\n",
+                fprintf(foutput,"# coeffs = [%s] nnz = [%s] time = %s found = %zu polynomials (target degree = %zu, lower degree = %zu)\n",
                             args.getArgValue("coeffs").c_str(),
                             args.getArgValue("nnz").c_str(),
                             total_time_elapsed.c_str(),
