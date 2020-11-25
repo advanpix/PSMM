@@ -174,23 +174,27 @@ inline void merge_files_with_results(const std::string& input, const std::string
     // Read all files and merge all polynomials in one big list.
     std::vector<reciprocal_polynomial_t> polynomials;
     for(std::size_t i = 0; i < filenames.size(); i++)
-    {
         load_polynomials(filenames[i],polynomials,precision);
-    }
 
     // Sort list of merged polynomials by degree & Mahler measure.
     std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F,b.F) < 0); });
     std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); });
 
+    std::map<std::size_t,std::size_t> nresults;
+
     // Add unique polynomials from lowest to highest degree to final list of results.
+    // Also compute number of unique polynomials for each degree.
     std::vector<reciprocal_polynomial_t> verified;
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
         reciprocal_polynomial_t& p = polynomials[i];
-        if(!same_polynomial_found_m(p.N, p.F, verify_precision, verified)) 
+        if(!same_polynomial_found_m(p.N, p.F, verify_precision, verified))
+        {
             verified.push_back(p);
+            nresults[p.N]++;
+        }
     }
-    
+
     if(verified.size() > 0)
     {
         FILE* foutput = NULL;
@@ -200,17 +204,19 @@ inline void merge_files_with_results(const std::string& input, const std::string
 
         if(foutput != NULL)
         {
-            int prev_degree = 0;
+            int previous = 0;
             for(std::size_t i = 0; i < verified.size(); i++)
             {
                 reciprocal_polynomial_t& poly = verified[i];
 
-                if(prev_degree != poly.N)
+                if(previous != poly.N)
                 {
-                   prev_degree = poly.N;                    
-                   fprintf(foutput,"\n"); 
+                   previous = poly.N;
+
+                   fprintf(foutput,"\n");
+                   fprintf(foutput,"# degree = %zu, %zu polynomials\n",poly.N,nresults[poly.N]);
                 }
-               
+
                 //
                 // D M NNZ H L K U Q R Coefficients
                 //
