@@ -72,15 +72,15 @@ int main(int argc, char* argv[])
 
     ArgumentsParser args(argc,argv);
 
-    if(args.size() == 1 && args.argSupplied("known"))
+    if(args.size() == 1 && args.argSupplied("analyze"))
     {
         //
         // Calculate and show statistics for the polynomials supplied:
         //
-        //    psmm -known=AllKnown
+        //    psmm -analyze=AllKnown
         //
 
-        show_statistics_of_polynomials(args.getArgValue("known"),extended_prec,extended_digits);
+        show_statistics_of_polynomials(args.getArgValue("analyze"),extended_prec,extended_digits);
     }
     else if(args.size() == 2 && args.argSupplied("merge") && args.argSupplied("output"))
     {
@@ -114,10 +114,18 @@ int main(int argc, char* argv[])
             //    psmm -degree=N -coeffs=-1,1 -threshold=1.3 -nnz=1,2,3,4 -threads=3 -period=5 -known=AllKnown -addto=AllKnown
             //
             // Show statistics:
-            //    psmm -known=AllKnown
+            //    psmm -analyze=AllKnown
+            //
+            // Merge several input files into final results.
+            //
+            //    psmm -merge=file0,file1,file2,...,fileN -output=AllKnown
             //
 
-            printf("Usage:\n\tpsmm -degree=N -coeffs=c0,c1,c2,... -threshold=T -nnz=nnz1,nnz2,nnz3,... -threads=M -period=3600 -known=AllKnown -addto=AllKnown\n\tpsmm -known=AllKnown\n");
+            printf("Usage:\n\tpsmm -degree=N -coeffs=c0,c1,c2,... -threshold=T -nnz=nnz1,nnz2,nnz3,... -threads=M -period=3600 -known=AllKnown -addto=AllKnown"
+                         "\n\tpsmm -merge=file0,file1,file2,...,fileN -output=AllKnown"
+                         "\n\tpsmm -analyze=AllKnown\n"
+                         );
+
             return EXIT_FAILURE;
         }
 
