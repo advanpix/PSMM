@@ -92,6 +92,68 @@ inline void printp(const reciprocal_polynomial_t& poly, int digits = 72)
     fflush(stdout);
 }
 
+inline void load_candidates_from_log(const std::string& filename, int N, std::vector<reciprocal_polynomial_t>& polynomials)
+{
+    std::ifstream ifs(filename);
+
+    if(ifs.is_open())
+    {
+        std::string original_line, line;
+        while(std::getline(ifs,original_line))
+        {
+            line = f_trim(original_line);
+            f_remove_duplicates(line,' ');
+            f_remove_duplicates(line,'\t');
+
+            if(line[0] == '*') // skip invalid lines & comments
+            {
+                // Format:
+                //
+                // *** %.16f\tNNZ = %d\t[%2d %2d .... %2d %2d]
+
+                std::vector<std::string> tokens;
+                f_split_string(line,'\t',tokens);
+
+
+                reciprocal_polynomial_t poly;
+
+                poly.N   = N;
+                poly.M   = atof(tokens[0].c_str()+4);
+                poly.nnz = atoi(tokens[1].c_str()+6);
+
+                std::vector<std::string> s_coeffs;
+                std::string t_coeffs = tokens[2].substr(1,tokens[2].size()-2);
+                f_split_string(f_trim(t_coeffs),' ',s_coeffs);
+
+                std::vector<double>& coeffs = poly.coeffs;
+                coeffs.resize(poly.N/2+1);
+
+                std::size_t k = 0;
+                for(std::size_t i = 0; i < s_coeffs.size(); i++)
+                    coeffs[k++] = atoi(s_coeffs[i].c_str());  // k = [0..N/2]
+
+                if(k != (poly.N/2+1))
+                {
+                    printf("Parsing error, N = %d, M = %.16f k = %d, poly.N/2+1 = %d %s\n",poly.N,poly.M,k,poly.N/2+1,original_line.c_str());
+
+                    for(std::size_t i = 0; i < tokens.size(); i++)
+                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+
+                    for(std::size_t i = 0; i < s_coeffs.size(); i++)
+                        printf("\ts_coeffs[%d] = %s\n",i,s_coeffs[i].c_str());
+
+                    exit(1);
+                }
+
+                polynomials.push_back(poly);
+            }
+        }
+
+        ifs.close();
+    }
+
+}
+
 inline void load_polynomials(const std::string& filename, std::vector<reciprocal_polynomial_t>& polynomials, int bits = 256)
 {
     std::ifstream ifs(filename);
@@ -230,6 +292,5 @@ inline void merge_files_with_results(const std::string& input, const std::string
         }
     }
  }
-
 
 #endif // __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
