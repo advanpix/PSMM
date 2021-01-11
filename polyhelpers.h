@@ -105,7 +105,7 @@ inline void load_candidates_from_log(const std::string& filename, int N, std::ve
             f_remove_duplicates(line,' ');
             f_remove_duplicates(line,'\t');
 
-            if(line[0] == '*') // skip invalid lines & comments
+            if(line[0] == '*') // consider only lines starting with ***
             {
                 // Format:
                 //
