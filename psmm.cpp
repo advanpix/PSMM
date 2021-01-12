@@ -112,6 +112,10 @@ int main(int argc, char* argv[])
         // Exactly this situation happened for N=358. Search was running for 5 days, 556 polynomials were found, but PSMM crashed on the verification stage for unknown reasons.
         // I suspect the memory leaks in the MPSolve were the main reason for the crash.
         //
+        // UPDATE (January 11, 2021).
+        // Same crash was observed for N=406. MSVC debugger narrowed down the cause to ZXXFactoring.cpp from NTL.
+        // Probably we need to write special test to find out why it is crashing (or just wait for NTL update).
+        //        
 
         if(
             !args.argSupplied("degree") ||
