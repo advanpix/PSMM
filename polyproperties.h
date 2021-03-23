@@ -111,12 +111,18 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
     std::sort(poly.begin(),poly.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F, b.F) < 0);});
     printf("\nMinimum Mahler measure:\n");
 
-    for(std::size_t i = 0; i < std::min(std::size_t(20),poly.size()); i++)
+    for(std::size_t i = 0; i < std::min(std::size_t(40),poly.size()); i++)
         printp(poly[i],extended_digits);
 
     //
     // Compute and show some statistics
     //
+    int min_diff_idx = -1;
+    mpf_t d, t;
+    mpf_init2(d, extended_prec);
+    mpf_init2(t, extended_prec);
+    mpf_set_si(d,1);
+
     int maxNNZ(0), maxH(0),maxL(0),maxK(0), maxU(0), maxQ(0), maxR(0);
     for(std::size_t i = 0; i < poly.size(); i++)
     {
@@ -136,7 +142,21 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
             printf("NON-PRIMITIVE (%d): ",int(divisors.back()));
             printp(poly[i],extended_digits);
         }
+
+        if(i+1 < poly.size())
+        {
+            mpf_sub(t,poly[i+1].F,poly[i].F);
+            if(mpf_cmp(t,d) < 0) // t < d
+            {
+                mpf_set(d,t);
+                min_diff_idx = i;
+            }
+        }
     }
+
+    printf("\nPolynomials with nearest Mahler measures (diff = %.2e):\n", mpf_get_d(d));
+    printp(poly[min_diff_idx]  ,extended_digits);
+    printp(poly[min_diff_idx+1],extended_digits);
 
     printf("\nMaximum number of non-zero coefficients (NNZ = %d):\n", poly[maxNNZ].nnz); for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxNNZ].nnz == poly[i].nnz) printp(poly[i],extended_digits);
     printf("\nMaximum Height (H = %d):\n",poly[maxH].H);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxH].H     == poly[i].H  ) printp(poly[i],extended_digits);
@@ -147,6 +167,7 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
     printf("\nMaximum number of real non-unity roots (R = %d):\n",poly[maxR].R);         for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxR].R     == poly[i].R  ) printp(poly[i],extended_digits);
     printf("-----------------------------------------------------------------\n");
 
+    mpf_clears(d,t,NULL);
 }
 
 #endif // __PSMM_POLYNOMIAL_PROPERTIES_H__

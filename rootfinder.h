@@ -205,7 +205,7 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
 
             mpf_sub_ui(d,r,1);
             mpf_abs(d,d);
-            if(mpf_cmp(d,eps) <= 0)  // ||z|-1| < eps
+            if(mpf_cmp(d,eps) <= 0)  // ||z|-1| <= eps
             {
                 U++; // unity root
             }
