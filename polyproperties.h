@@ -104,14 +104,14 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
         load_polynomials(filename,poly,extended_prec);
 
     printf("-----------------------------------------------------------------\n");
-    printf("Polynomials loaded from %s have following properties:\n",filename.c_str());
+    printf("Polynomials loaded from %s (%d polynomials in total) have following properties:\n",filename.c_str(),poly.size());
 
     // Yes, I know, this is terrible and awfully inefficient, etc.
     // But I need this piece of code as an indication that I control my innner perfectionist.
     std::sort(poly.begin(),poly.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F, b.F) < 0);});
-    printf("\nMinimum Mahler measure:\n");
+    printf("\nPolynomials with Minimum Mahler measure:\n");
 
-    for(std::size_t i = 0; i < std::min(std::size_t(40),poly.size()); i++)
+    for(std::size_t i = 0; i < std::min(std::size_t(50),poly.size()); i++)
         printp(poly[i],extended_digits);
 
     //
