@@ -12,6 +12,7 @@
 #define PSMM_MAIN_HEADER_H
 
 #include <cmath>
+#include <complex>
 #include <cstdio>
 #include <cstdlib>
 #include <cstddef>
