@@ -31,7 +31,7 @@ inline double compute_mahler_general_polynomial_d(const std::vector<double>& coe
     //
     // Find polynomial roots, compute Mahler measure for double precision.
     //
-    
+
     int n = (coeffs.size()-1);  // Degree of the polynomial.
 
     mps_context* s = mps_context_new();
@@ -43,11 +43,11 @@ inline double compute_mahler_general_polynomial_d(const std::vector<double>& coe
     //
     // We use full 64-bit limb in GMP to get "double" precision (= 53 bits for mantissa).
     // This pushes MPSolve to use GMP internally, and hence roots are stored in mpc_t format.
-    // We can get them directly by mps_context_get_roots_m. 
+    // We can get them directly by mps_context_get_roots_m.
     // There is no speed merit in using the mps_context_get_roots_d (roots are stored in mpc_t format anyway).
     //
     const int working_precision = 64;
-    
+
     mps_context_set_input_poly            (s, poly);
     mps_context_set_output_prec           (s, working_precision);
     mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
@@ -67,7 +67,7 @@ inline double compute_mahler_general_polynomial_d(const std::vector<double>& coe
         mpf_init2(m,working_precision);
         mpf_init2(t,working_precision);
         mpf_init2(r,working_precision);
-        
+
         mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
         mpc_vinit2(results,n,working_precision);
 
@@ -76,17 +76,31 @@ inline double compute_mahler_general_polynomial_d(const std::vector<double>& coe
         mpf_set_si(m,1);
         for(int i = 0; i < n; i++)
         {
-            mpf_mul (t, mpc_Re(results[i]), mpc_Re(results[i])); // t = x^2
-            mpf_mul (r, mpc_Im(results[i]), mpc_Im(results[i])); // r = y^2
-            mpf_add (r, r, t);                                   // r = x^2+y^2
-            mpf_sqrt(r, r);                                      // r = sqrt(x^2+y^2)
-            
-            if(mpf_cmp_si(r,1) > 0) mpf_mul(m,m,r); // Compute M(p) if |z| > 1
+            mpf_t& x = mpc_Re(results[i]);
+            mpf_t& y = mpc_Im(results[i]);
+
+            // Fast reject using Manhattan distance (to avoid slow sqrt):
+            //
+            //             |x|+|y| <= sqrt(x^2+y^2)
+            //
+            mpf_abs(x,x);
+            mpf_abs(y,y);
+            mpf_add(r,x,y);
+
+            if(mpf_cmp_si(r,1) > 0)
+            {
+                mpf_mul (t, x, x); // t = x^2
+                mpf_mul (r, y, y); // r = y^2
+                mpf_add (r, r, t); // r = x^2+y^2
+                mpf_sqrt(r, r);    // r = sqrt(x^2+y^2)
+
+                if(mpf_cmp_si(r,1) > 0) mpf_mul(m,m,r); // compute M(p) if |z| > 1
+            }
         }
-        
+
         mahler = mpf_get_d(m);
-        
-        mpf_clears(m,r,t,NULL);
+
+        mpf_clears(m,t,r,NULL);
         mpc_vclear(results,n);
         std::free(results);
     }
@@ -115,10 +129,10 @@ inline double compute_mahler_general_polynomial_d(const std::vector<double>& coe
 
 inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& coeffs, int nthreads = 1)
 {
-    // 
-    // The function computes Mahler measure of the reciprocal polynomial in double precision. 
+    //
+    // The function computes Mahler measure of the reciprocal polynomial in double precision.
     // It is supposed to be fast, as it is being used in main loop over all polynomials.
-    // 
+    //
     // There are many ways and ideas on how to compute roots of palindromic polynomials. At the moment we rely on the basic ones:
     //
     // (A) Convert palindromic polynomial to generic and use root-finder to find all roots of generic polynomial.
@@ -129,7 +143,7 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
     //     Then roots can be converted to the roots of original palindromic polynomial.
     //     Root finder for Chebyshev basis must be optimized for sparse expansions as well.
     //
-    //     MPSolve supports Chebyshev expansions, but its stability is questionable in this mode. 
+    //     MPSolve supports Chebyshev expansions, but its stability is questionable in this mode.
     //     Only MPS_ALGORITHM_SECULAR_GA is supported, and output results are on lower accuracy (at least in double precision).
     //     But most importantly, MPSolve doesn't support sparse Chebyshev expansions out-of-the-box (we can add it by providing our custom polynomial class).
     //     This leads to x2 times slow-down compared to (A).
@@ -150,7 +164,7 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
 
     return compute_mahler_general_polynomial_d(a, nthreads);
 #else
-    
+
     //
     // (B) Suffers from accuracy loss in MPSolve 3.2.1
     //
@@ -158,25 +172,25 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
     // Find roots of Chebyshev expansion.
     // Convert them to the roots of original polynomial.
     // Compute Mahler measure.
-    
+
     int m = 2 * (coeffs.size()-1);   // Palindromic polynomial degree.
     int n = m / 2;                   // Chebyshev expansion degree. Input vector "coeffs" includes coefficients [0..n] (n+1 in total).
     double mahler = 1.0;
-    
+
     mps_context* s = mps_context_new();
     mps_chebyshev_poly* poly = mps_chebyshev_poly_new(s,n,MPS_STRUCTURE_REAL_INTEGER);
 
     for(int i = 0; i <= n; i++)
         mps_chebyshev_poly_set_coefficient_i(s,poly,i,coeffs[n-i],0); //  = palindromic coeffs in reversed order.
-    
+
     //
     // We use full 64-bit limb in GMP to get "double" precision (= 53 bits for mantissa).
     // This pushes MPSolve to use GMP internally, and hence roots are stored in mpc_t format.
-    // We can get them directly by mps_context_get_roots_m. 
+    // We can get them directly by mps_context_get_roots_m.
     // There is no speed merit in using the mps_context_get_roots_d (roots are stored in mpc_t format anyway).
     //
     const int precision = 64;
-    
+
     mps_context_set_input_poly            (s, MPS_POLYNOMIAL(poly));
     mps_context_set_output_prec           (s, precision);
     mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
@@ -184,7 +198,7 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
     mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
 
     mps_mpsolve(s);
-    
+
 #if 0
     mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
     mpc_vinit2(results,n,precision);
@@ -200,7 +214,7 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
     mpc_vclear(results,n);
     std::free(results);
 #endif
-    
+
     //
     // Double-precision version. It is natural that is has much lower accuracy, especially for high degree polynomials.
     // However this fails even on lower degrees, e.g. 10.
@@ -212,7 +226,7 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
         std::complex<double> z(cplx_Re(results[i]),cplx_Im(results[i]));
         std::complex<double> x0 = (z+sqrt(z*z-4.0))/2.0;
         std::complex<double> x1 = (z-sqrt(z*z-4.0))/2.0;
-        
+
         double r0 = std::hypot(x0.real(),x0.imag());
         if(r0 > 1) mahler *= r0;
 
@@ -223,7 +237,7 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
 
     mps_polynomial_free(s, MPS_POLYNOMIAL(poly));
     mps_context_free (s);
-    
+
     return mahler;
 #endif
 
