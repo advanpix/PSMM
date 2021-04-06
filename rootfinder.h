@@ -23,18 +23,22 @@ extern "C" void mps_thread_pool_set_concurrency_limit(void * s, void * pool, uns
 //
 
 //
-// One-shot simple version with re-allocations on each call.
+// Computes Mahler measure of the (general) polynomial with double precision accuracy.
 //
-inline int mpsolve_find_all_roots_d(int n, const double* coeffs, double* wr, double* wi, double* residuals, int nthreads = 1)
+
+inline double compute_mahler_general_polynomial_d(const std::vector<double>& coeffs, int nthreads = 1)
 {
-    int error = 0;
+    //
+    // Find polynomial roots, compute Mahler measure for double precision.
+    //
+    
+    int n = (coeffs.size()-1);  // Degree of the polynomial.
 
     mps_context* s = mps_context_new();
     mps_polynomial* poly = (mps_polynomial*)mps_monomial_poly_new(s,n);
 
     for(int i = 0; i <= n; i++)
-        mps_monomial_poly_set_coefficient_d(s,(mps_monomial_poly*)poly,i,coeffs[i],0.0);
-//      mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,i,coeffs[i],0);
+        mps_monomial_poly_set_coefficient_d(s,(mps_monomial_poly*)poly,i,coeffs[i],0.0); // mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,i,coeffs[i],0);
 
     //
     // We use full 64-bit limb in GMP to get "double" precision (= 53 bits for mantissa).
@@ -42,87 +46,69 @@ inline int mpsolve_find_all_roots_d(int n, const double* coeffs, double* wr, dou
     // We can get them directly by mps_context_get_roots_m. 
     // There is no speed merit in using the mps_context_get_roots_d (roots are stored in mpc_t format anyway).
     //
-    const int precision = 64;
+    const int working_precision = 64;
     
     mps_context_set_input_poly            (s, poly);
-    mps_context_set_output_prec           (s, precision);
+    mps_context_set_output_prec           (s, working_precision);
     mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
     mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
     mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
 
     mps_mpsolve(s);
 
-#if 1
-    mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
-    mpc_vinit2(results,n,precision);
-
-    mps_context_get_roots_m(s, &results, NULL);
-
-    for(int i = 0; i < n; i++)
+    double mahler = 1.0;
+    if(working_precision > 53)
     {
-        wr[i] = mpf_get_d(mpc_Re(results[i]));
-        wi[i] = mpf_get_d(mpc_Im(results[i]));
-    }
+        //
+        // In this case MPSolve uses GMP anyway, so it is better to work with multiprecision roots directly.
+        // As a result, computed Mahler measure has (much) higher accuracy, (only last digit is a bit off).
+        //
+        mpf_t m, r, t;
+        mpf_init2(m,working_precision);
+        mpf_init2(t,working_precision);
+        mpf_init2(r,working_precision);
+        
+        mpc_t *results = (mpc_t*) std::malloc(n*sizeof(mpc_t));
+        mpc_vinit2(results,n,working_precision);
 
-    mpc_vclear(results,n);
-    std::free(results);
-    
-#else
-    cplx_t *results = (cplx_t*) std::malloc(n*sizeof(cplx_t));
-    mps_context_get_roots_d (s, &results, &residuals);
-    for(int i = 0; i < n; i++)
-    {
-        wr[i] = cplx_Re(results[i]);
-        wi[i] = cplx_Im(results[i]);
-    }
-    std::free(results);
-#endif
+        mps_context_get_roots_m(s, &results, NULL);
 
-    error = mps_context_has_errors(s);
-
-    mps_polynomial_free (s, poly);
-    mps_context_free (s);
-
-    return error;
-}
-
-//
-// Computes Mahler measure of polynomial with the accuracy specified.
-// Also returns roots (real & imaginary parts) and residuals for each root.
-//
-inline double mpsolve_compute_mahler_d(int n, const double* coeffs, double* wr, double* wi, double* residuals, int nthreads = 1)
-{
-    double mahler = 0;
-    int error = mpsolve_find_all_roots_d(n,coeffs,wr,wi,residuals,nthreads);
-
-    if(error == 0)
-    {
-        mahler = 1.0;
+        mpf_set_si(m,1);
         for(int i = 0; i < n; i++)
         {
-            double r = std::hypot(wr[i],wi[i]);
+            mpf_mul (t, mpc_Re(results[i]), mpc_Re(results[i])); // t = x^2
+            mpf_mul (r, mpc_Im(results[i]), mpc_Im(results[i])); // r = y^2
+            mpf_add (r, r, t);                                   // r = x^2+y^2
+            mpf_sqrt(r, r);                                      // r = sqrt(x^2+y^2)
+            
+            if(mpf_cmp_si(r,1) > 0) mpf_mul(m,m,r); // Compute M(p) if |z| > 1
+        }
+        
+        mahler = mpf_get_d(m);
+        
+        mpf_clears(m,r,t,NULL);
+        mpc_vclear(results,n);
+        std::free(results);
+    }
+    else
+    {
+        //
+        // Work in double-precision.
+        //
+        cplx_t *results = (cplx_t*) std::malloc(n*sizeof(cplx_t));
+        mps_context_get_roots_d(s, &results, NULL);
+        for(int i = 0; i < n; i++)
+        {
+            double r = std::hypot(cplx_Re(results[i]),cplx_Im(results[i]));
 
             if(r > 1)
                 mahler *= r;
         }
+        std::free(results);
     }
 
-    return mahler;
-}
-
-inline double compute_mahler_general_polynomial_d(const std::vector<double>& coeffs, int nthreads = 1)
-{
-    int N = (coeffs.size()-1);
-
-    double* WR  = (double*)std::malloc(N*sizeof(double));
-    double* WI  = (double*)std::malloc(N*sizeof(double));
-    double* RE  = (double*)std::malloc(N*sizeof(double));
-
-    double mahler = mpsolve_compute_mahler_d(N,coeffs.data(), WR, WI, RE, nthreads);
-
-    std::free(WR);
-    std::free(WI);
-    std::free(RE);
+    mps_polynomial_free (s, poly);
+    mps_context_free (s);
 
     return mahler;
 }
