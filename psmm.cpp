@@ -18,6 +18,10 @@
 #include "polyproperties.h"
 #include "polyconvert.h"
 
+#ifdef USE_FAST_MAHLER_ESTIMATOR
+#include "mahlerestimator.h"
+#endif
+
 // References.
 //
 // [Br51] R. Breusch, On the distribution of the roots of a polynomial with integral coefficients, Proc. Amer. Math. Soc. 2 (1951), 939–941
@@ -52,7 +56,7 @@ int main(int argc, char* argv[])
     //
     // EXAMPLE 4.
     //
-    //     286 1.28535091[1]978298816872119209775780481172687954632768373236970316904376274 2 1 5 47 192 92 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 -1 
+    //     286 1.28535091[1]978298816872119209775780481172687954632768373236970316904376274 2 1 5 47 192 92 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 -1
     //     286 1.28535091[2]052405489247282361244720981840042015246864037398332189073656661 2 1 5 40 206 80 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1
     //
     // EXAMPLE 5.
@@ -62,10 +66,10 @@ int main(int argc, char* argv[])
     //
     // EXAMPLE 6.
     //
-    //     274 1.2860926270[2]6747194069236227273054797341756306778007487778481200532426484 2 1 5 33 208 64 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 
-    //     284 1.2860926270[1]2435716829466235652543676338041317848010311065680690084257741 2 1 5 45 194 88 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 
+    //     274 1.2860926270[2]6747194069236227273054797341756306778007487778481200532426484 2 1 5 33 208 64 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1
+    //     284 1.2860926270[1]2435716829466235652543676338041317848010311065680690084257741 2 1 5 45 194 88 2 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1
     //
-        // Expectedly, there are many such polynomials probably with even smaller difference.
+    // Expectedly, there are many such polynomials probably with even smaller difference.
     // Therefore we do not recommend using Known180 because of limited number of digits stored.
     //
     // Instead, we suggest to use extended precision for Mahler measure.
@@ -125,7 +129,7 @@ int main(int argc, char* argv[])
         // UPDATE (January 11, 2021).
         // Same crash was observed for N=406. MSVC debugger narrowed down the cause to ZXXFactoring.cpp from NTL.
         // Probably we need to write special test to find out why it is crashing (or just wait for NTL update).
-        //        
+        //
 
         if(
             !args.argSupplied("degree") ||
@@ -261,9 +265,11 @@ int main(int argc, char* argv[])
                     {
                         if(!skip)
                         {
-                            // Find roots, compute Mahler measure and handle the result.
-                            double mahler = compute_mahler_reciprocal_polynomial_d(poly,nthreads); // Estimate Mahler measure in double precision (fast).
-
+#ifdef USE_FAST_MAHLER_ESTIMATOR
+                            double mahler = estimate_mahler_reciprocal_polynomial_d(poly,threshold,nthreads); // Estimate Mahler measure in double precision (fast).
+#else
+                            double mahler = compute_mahler_reciprocal_polynomial_d(poly,nthreads); // Compute Mahler measure exactly (find all roots, etc.)
+#endif
                             if(mahler > 1.0 && mahler <= threshold)
                             {
                                 // Search if any of known polynomials have the same Mahler measure.

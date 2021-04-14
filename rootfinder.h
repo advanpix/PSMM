@@ -10,12 +10,14 @@
 
 #ifndef PSMM_ROOT_FINDER_H
 #define PSMM_ROOT_FINDER_H
-#include <mps/mps.h>
 
 //
-// MPSolve doesn't provide the function in public interface, so we just forward declare it here.
+// MPSolve doesn't provide the function in public interface, so we just forward declare it here. Needed iif _MPS_PRIVATE is not defined.
 //
-extern "C" void mps_thread_pool_set_concurrency_limit(void * s, void * pool, unsigned int concurrency_limit);
+
+#ifndef _MPS_PRIVATE
+    extern "C" void mps_thread_pool_set_concurrency_limit(void * s, void * pool, unsigned int concurrency_limit);
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //

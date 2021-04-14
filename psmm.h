@@ -29,6 +29,7 @@
 #include <map>
 #include <algorithm>
 #include <gmp.h>
+#include <mps/mps.h>
 
 typedef struct{
 
