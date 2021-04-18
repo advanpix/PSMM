@@ -267,9 +267,9 @@ exit_sub:
     }
 
   /* == 11 == Check inclusions */
-  /* This step is disabled since it cause problems with the lar* kind of polynomials. 
+  /* This step is disabled since it cause problems with the lar* kind of polynomials.
    * To be re-enabled a careful check of the necessary precision to avoid NULL DERIVATIVE
-   * warnings should be implemented. 
+   * warnings should be implemented.
    * if (s->active_poly->prec > 0)
    *   mps_validate_inclusions (s);
    */
@@ -633,7 +633,7 @@ int mps_mahler_is_over_threshold()
   return glb_over_threshold;
 }
 
-mps_boolean 
+mps_boolean
 mps_mahler_check_stop (mps_context * s)
 {
   int i;
@@ -672,12 +672,13 @@ mps_mahler_check_stop (mps_context * s)
       {
         for (i = 0; i < s->n; i++)
         {
-            if(MPS_ROOT_STATUS_IS_COMPUTED(s->root[i]->status)) /* && s->root[i]->inclusion == MPS_ROOT_INCLUSION_OUT MPS_ROOT_STATUS_IS_APPROXIMATED */
+            //if(MPS_ROOT_STATUS_IS_COMPUTED(s->root[i]->status)) /* && s->root[i]->inclusion == MPS_ROOT_INCLUSION_OUT MPS_ROOT_STATUS_IS_APPROXIMATED */
             {
                   if(s->lastphase == float_phase)
                   {
-                        double r = hypot(cplx_Re(s->root[i]->fvalue),cplx_Im(s->root[i]->fvalue));
-                        if(r > glb_threshold)
+                        double R = hypot(cplx_Re(s->root[i]->fvalue),cplx_Im(s->root[i]->fvalue));
+                        double r = s->root[i]->frad;
+                        if(R > glb_threshold || abs(R-r) > glb_threshold)
                         {
                             glb_over_threshold = 1;
                             return true;
@@ -685,8 +686,9 @@ mps_mahler_check_stop (mps_context * s)
                   }
                   else if(s->lastphase == dpe_phase)
                   {
-                        double r = hypot(rdpe_get_d(cdpe_Re(s->root[i]->dvalue)),rdpe_get_d(cdpe_Im(s->root[i]->dvalue)));
-                        if(r > glb_threshold)
+                        double R = hypot(rdpe_get_d(cdpe_Re(s->root[i]->dvalue)),rdpe_get_d(cdpe_Im(s->root[i]->dvalue)));
+                        double r = rdpe_get_d(s->root[i]->drad);
+                        if(R > glb_threshold || abs(R-r) > glb_threshold)
                         {
                             glb_over_threshold = 1;
                             return true;
@@ -694,8 +696,9 @@ mps_mahler_check_stop (mps_context * s)
                   }
                   else if(s->lastphase == mp_phase)
                   {
-                        double r = hypot(mpf_get_d(mpc_Re(s->root[i]->mvalue)),mpf_get_d(mpc_Im(s->root[i]->mvalue)));
-                        if(r > glb_threshold)
+                        double R = hypot(mpf_get_d(mpc_Re(s->root[i]->mvalue)),mpf_get_d(mpc_Im(s->root[i]->mvalue)));
+                        double r = rdpe_get_d(s->root[i]->drad);
+                        if(R > glb_threshold || abs(R-r) > glb_threshold)
                         {
                             glb_over_threshold = 1;
                             return true;
@@ -841,12 +844,12 @@ mps_mahler_mpsolve_implementation (mps_context * s)
 
       if (s->DOLOG)
         mps_dump (s);
-/* 
+/*
       computed = mps_check_stop (s);
       if (computed && s->output_config->goal != MPS_OUTPUT_GOAL_APPROXIMATE)
       goto exit_sub;
-    
- */  
+
+ */
       computed = mps_mahler_check_stop (s);
       if(computed && glb_threshold > 0 && glb_over_threshold)
       {
@@ -857,7 +860,7 @@ mps_mahler_mpsolve_implementation (mps_context * s)
           if (computed && s->output_config->goal != MPS_OUTPUT_GOAL_APPROXIMATE)
             goto exit_sub;
       }
-    
+
       /* stop for COUNT and ISOLATE goals */
     }
 
@@ -883,7 +886,7 @@ mps_mahler_mpsolve_implementation (mps_context * s)
 /*    computed = mps_check_stop (s);
       if (computed && s->output_config->goal != MPS_OUTPUT_GOAL_APPROXIMATE)
         goto exit_sub;
- */    
+ */
       computed = mps_mahler_check_stop (s);
       if(computed && glb_threshold > 0 && glb_over_threshold)
       {
@@ -984,7 +987,7 @@ mps_mahler_mpsolve_implementation (mps_context * s)
       {
           goto quick_exit;
       }
-      
+
       mps_mmodify (s, true);
 
       /* == 7.4 ==  reset the status vector */
@@ -1029,9 +1032,9 @@ exit_sub:
     }
 
   /* == 11 == Check inclusions */
-  /* This step is disabled since it cause problems with the lar* kind of polynomials. 
+  /* This step is disabled since it cause problems with the lar* kind of polynomials.
    * To be re-enabled a careful check of the necessary precision to avoid NULL DERIVATIVE
-   * warnings should be implemented. 
+   * warnings should be implemented.
    * if (s->active_poly->prec > 0)
    *   mps_validate_inclusions (s);
    */
@@ -1049,7 +1052,7 @@ exit_sub:
 
   /* Finally copy the roots ready for output */
   mps_copy_roots (s);
-  
+
 quick_exit:
-;  
+;
 }
