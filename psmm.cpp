@@ -396,10 +396,10 @@ int main(int argc, char* argv[])
                 //
                 // Do the last verification step in extended precision.
                 //
-                if(mpf_cmp_si(candidate.F,1) > 0)
+                if(candidate.F > 1)
                 {
-                    bool found_m = (same_polynomial_found_m(candidate.N, candidate.F, verify_prec, verified) == 1) ||
-                                   (same_polynomial_found_m(candidate.N, candidate.F, verify_prec, known   ) == 1);
+                    bool found_m = (same_polynomial_found_m(candidate.N, candidate.F.get_mpf_t(), verify_prec, verified) == 1) ||
+                                   (same_polynomial_found_m(candidate.N, candidate.F.get_mpf_t(), verify_prec, known   ) == 1);
 
                     if(!found_m)
                     {
@@ -447,10 +447,10 @@ int main(int argc, char* argv[])
                                 //
                                 // Do the last verification step in extended precision.
                                 //
-                                if(mpf_cmp_si(p.F,1) > 0)
+                                if(p.F > 1)
                                 {
-                                    bool found_m = (same_polynomial_found_m(p.N, p.F, verify_prec, verified) == 1) ||
-                                                   (same_polynomial_found_m(p.N, p.F, verify_prec, known   ) == 1);
+                                    bool found_m = (same_polynomial_found_m(p.N, p.F.get_mpf_t(), verify_prec, verified) == 1) ||
+                                                   (same_polynomial_found_m(p.N, p.F.get_mpf_t(), verify_prec, known   ) == 1);
 
                                     if(!found_m)
                                     {
@@ -470,7 +470,7 @@ int main(int argc, char* argv[])
         }
 
         // Sort list of cleaned-up results by degree, tie-break by Mahler measure.
-        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); });
+        std::sort(verified.begin(),verified.end(),[](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) { return (a.N < b.N) || ((a.N == b.N) && (a.F < b.F)); });
 
         auto main_loop_stop = std::chrono::high_resolution_clock::now();
         mpz_set_ui(time_elapsed,std::chrono::duration_cast<std::chrono::seconds>(main_loop_stop-main_loop_start).count());
@@ -517,7 +517,7 @@ int main(int argc, char* argv[])
                     //
                     // D M NNZ H L K U Q R Coefficients
                     //
-                    fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                    fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F.get_mpf_t(),extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
                     for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",poly.coeffs[j]);
                     fprintf(foutput,"\n");
                     fflush(foutput);

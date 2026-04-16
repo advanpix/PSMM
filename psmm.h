@@ -26,6 +26,7 @@
 #include <map>
 #include <algorithm>
 #include <gmp.h>
+#include <gmpxx.h>
 #include <mps/mps.h>
 
 typedef struct{
@@ -45,8 +46,11 @@ typedef struct{
 
 
     // Mahler measure
-    mpf_t  F;                   // Mahler measure in extended precision (might not be available).
-    double M;                   // Mahler measure in double precision.
+    mpf_class F;                // Mahler measure in extended precision (RAII-managed).
+                                // Default precision is whatever mpf_get_default_prec() was at the
+                                // moment the polynomial was constructed; use F.set_prec(bits) to
+                                // promote before writing a high-precision value.
+    double    M;                // Mahler measure in double precision.
 
 }reciprocal_polynomial_t;
 

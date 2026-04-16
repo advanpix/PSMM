@@ -44,7 +44,7 @@ inline int same_polynomial_found(int n, double mahler, double tolerance, std::ve
 inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision, std::vector<reciprocal_polynomial_t>& polynomials)
 {
     //
-    // We assume that p.F is computed
+    // We assume that p.F is computed.
     //
 
     mpf_t m, d, eps;
@@ -64,7 +64,7 @@ inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision,
 
         if(p.N <= n)
         {
-            mpf_sub(d,mahler,p.F);
+            mpf_sub(d,mahler,p.F.get_mpf_t());
             mpf_abs(d,d);
 
             if(mpf_cmp(d,m) <= 0)
@@ -85,7 +85,7 @@ inline void printp(const reciprocal_polynomial_t& poly, int digits = 72)
     // D M NNZ H L K U Q R Coefficients
     //
 
-    printf("%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+    printf("%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F.get_mpf_t(),digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
     for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",poly.coeffs[j]);
 
     printf("\n");
@@ -192,10 +192,10 @@ inline void load_polynomials(const std::string& filename, std::vector<reciprocal
                 poly.N  = atoi(tokens[0].c_str());
 
                 // Read the Mahler measure in extended precision and convert to double for fast computations later on.
-                mpf_init2(poly.F,bits);
-                str2mpf(poly.F,tokens[1].c_str());
+                poly.F.set_prec(bits);
+                str2mpf(poly.F.get_mpf_t(),tokens[1].c_str());
 
-                poly.M   = mpf_get_d(poly.F);
+                poly.M   = poly.F.get_d();
                 poly.nnz = atof(tokens[2].c_str());
                 poly.H   = atof(tokens[3].c_str());
                 poly.L   = atof(tokens[4].c_str());
@@ -239,7 +239,7 @@ inline void merge_files_with_results(const std::string& input, const std::string
         load_polynomials(filenames[i],polynomials,precision);
 
     // Sort list of merged polynomials by degree, tie-break by Mahler measure.
-    std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); });
+    std::sort(polynomials.begin(),polynomials.end(),[](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) { return (a.N < b.N) || ((a.N == b.N) && (a.F < b.F)); });
 
     std::map<std::size_t,std::size_t> nresults;
 
@@ -249,7 +249,7 @@ inline void merge_files_with_results(const std::string& input, const std::string
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
         reciprocal_polynomial_t& p = polynomials[i];
-        if(!same_polynomial_found_m(p.N, p.F, verify_precision, verified))
+        if(!same_polynomial_found_m(p.N, p.F.get_mpf_t(), verify_precision, verified))
         {
             verified.push_back(p);
             nresults[p.N]++;
@@ -281,7 +281,7 @@ inline void merge_files_with_results(const std::string& input, const std::string
                 //
                 // D M NNZ H L K U Q R Coefficients
                 //
-                fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F.get_mpf_t(),output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
                 for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",poly.coeffs[j]);
                 fprintf(foutput,"\n");
                 fflush(foutput);

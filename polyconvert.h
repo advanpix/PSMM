@@ -48,9 +48,9 @@ inline void load_polynomials_old(const std::string& filename, std::vector<recipr
                 poly.N  = atoi(tokens[0].c_str());
 
                 // Read the Mahler measure in extended precision and convert to double for fast computations later on.
-                mpf_init2(poly.F,bits);
-                str2mpf(poly.F,tokens[1].c_str());
-                poly.M  = mpf_get_d(poly.F);
+                poly.F.set_prec(bits);
+                str2mpf(poly.F.get_mpf_t(),tokens[1].c_str());
+                poly.M  = poly.F.get_d();
 
                 poly.K  = atof(tokens[2].c_str());
                 coeffs.resize(poly.N/2+1);
@@ -168,7 +168,7 @@ inline void convert_file(const std::string& srcfile, const std::string& dstfile,
                     compute_all_properties_of_reciprocal_polynomial(p, bits, nthreads);
 
                     // Write line to the new file
-                    ofs << p.N << " " << mpf2string(p.F,output_digits)<< " " << p.nnz<< " " << p.H<< " " << p.L << " " << p.K << " " << p.U<< " " << p.Q<< " " << p.R << " ";
+                    ofs << p.N << " " << mpf2string(p.F.get_mpf_t(),output_digits)<< " " << p.nnz<< " " << p.H<< " " << p.L << " " << p.K << " " << p.U<< " " << p.Q<< " " << p.R << " ";
                     for(std::size_t i = 0; i < p.N/2; i++) ofs << p.coeffs[i] << " ";
                     ofs << p.coeffs[p.N/2] << std::endl;
 

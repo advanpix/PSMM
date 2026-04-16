@@ -27,8 +27,9 @@ inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomia
     //
     // Compute roots, their properties and Mahler measure in extended precision.
     //
-    mpsolve_compute_mahler_with_properties(p.F, N, a.data(), p.K, p.U, p.Q, p.R, bits, nthreads);
-    p.M = mpf_get_d(p.F);
+    p.F.set_prec(bits);
+    mpsolve_compute_mahler_with_properties(p.F.get_mpf_t(), N, a.data(), p.K, p.U, p.Q, p.R, bits, nthreads);
+    p.M = p.F.get_d();
 
     //
     // Compute NNZ for the half of the coefficients (excluding the a[0] = 1 that is constant).
@@ -107,7 +108,7 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
 
     // Yes, I know, this is terrible and awfully inefficient, etc.
     // But I need this piece of code as an indication that I control my innner perfectionist.
-    std::sort(poly.begin(),poly.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F, b.F) < 0);});
+    std::sort(poly.begin(),poly.end(),[](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) { return (a.F < b.F); });
     printf("\nPolynomials with Minimum Mahler measure:\n");
 
     for(std::size_t i = 0; i < std::min(std::size_t(50),poly.size()); i++)
@@ -144,7 +145,7 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
 
         if(i+1 < poly.size())
         {
-            mpf_sub(t,poly[i+1].F,poly[i].F);
+            mpf_sub(t,poly[i+1].F.get_mpf_t(),poly[i].F.get_mpf_t());
             if(mpf_cmp(t,d) < 0) // t < d
             {
                 mpf_set(d,t);

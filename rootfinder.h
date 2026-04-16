@@ -361,7 +361,9 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
             }
         }
 
-        mpf_init2(mahler,target_precision);
+        // Caller owns `mahler`'s allocation and precision (see reciprocal_polynomial_t::F /
+        // mpf_class). Just copy the computed value into the caller's storage. If the caller's
+        // precision is lower than target_precision, GMP rounds to the caller's precision.
         mpf_set(mahler,m);
 
         mpf_clears(m,r,t,d,eps,NULL);
