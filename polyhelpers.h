@@ -238,8 +238,7 @@ inline void merge_files_with_results(const std::string& input, const std::string
     for(std::size_t i = 0; i < filenames.size(); i++)
         load_polynomials(filenames[i],polynomials,precision);
 
-    // Sort list of merged polynomials by degree & Mahler measure.
-    std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F,b.F) < 0); });
+    // Sort list of merged polynomials by degree, tie-break by Mahler measure.
     std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); });
 
     std::map<std::size_t,std::size_t> nresults;

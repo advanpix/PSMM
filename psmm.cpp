@@ -222,7 +222,7 @@ int main(int argc, char* argv[])
 
         // Show preamble
         printf("-----------------------------------------------------------------\n");
-        printf("PSMM - Sequential search of polynomials with small Mahler measure.\n",degree);
+        printf("PSMM - Sequential search of polynomials with small Mahler measure.\n");
         printf("Degree       = %d\n",degree);
         printf("Coefficients = %s\n",args.getArgValue("coeffs").c_str());
         printf("Nonzeros     = %s\n",args.getArgValue("nnz").c_str());
@@ -326,7 +326,10 @@ int main(int argc, char* argv[])
                             double pps = double(polys_per_report)/double(elapsed_since_last_report.count());
 
                             mpz_sub_ui(polynomials_left,total_number_of_polynomials,current_polynomial);
-                            mpz_div_ui(time_left,polynomials_left,std::size_t(std::round(pps)));
+                            // Guard against divide-by-zero when the search rate rounds down to 0 pps
+                            // (happens briefly on very high-degree runs before the first few polys finish).
+                            const std::size_t pps_rounded = std::max<std::size_t>(1, static_cast<std::size_t>(std::round(pps)));
+                            mpz_div_ui(time_left,polynomials_left,pps_rounded);
 
                             std::string time_left_str = sec2yhms(time_left,years,days,hours,minutes,seconds);
 
@@ -466,9 +469,8 @@ int main(int argc, char* argv[])
             }
         }
 
-        // Sort list of cleaned-up results by degree & Mahler measure.
-        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F,b.F) < 0);}); // by Mahler
-        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); }); // by degree
+        // Sort list of cleaned-up results by degree, tie-break by Mahler measure.
+        std::sort(verified.begin(),verified.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); });
 
         auto main_loop_stop = std::chrono::high_resolution_clock::now();
         mpz_set_ui(time_elapsed,std::chrono::duration_cast<std::chrono::seconds>(main_loop_stop-main_loop_start).count());
