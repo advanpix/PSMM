@@ -104,7 +104,7 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
         load_polynomials(filename,poly,extended_prec);
 
     printf("-----------------------------------------------------------------\n");
-    printf("Polynomials loaded from %s (%d polynomials in total) have following properties:\n",filename.c_str(),poly.size());
+    printf("Polynomials loaded from %s (%zu polynomials in total) have following properties:\n",filename.c_str(),poly.size());
 
     // Yes, I know, this is terrible and awfully inefficient, etc.
     // But I need this piece of code as an indication that I control my innner perfectionist.
@@ -158,13 +158,13 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
     printp(poly[min_diff_idx]  ,extended_digits);
     printp(poly[min_diff_idx+1],extended_digits);
 
-    printf("\nMaximum number of non-zero coefficients (NNZ = %d):\n", poly[maxNNZ].nnz); for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxNNZ].nnz == poly[i].nnz) printp(poly[i],extended_digits);
-    printf("\nMaximum Height (H = %d):\n",poly[maxH].H);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxH].H     == poly[i].H  ) printp(poly[i],extended_digits);
-    printf("\nMaximum Length (L = %d):\n",poly[maxL].L);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxL].L     == poly[i].L  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of roots outside unit disk (K = %d):\n",poly[maxK].K);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxK].K     == poly[i].K  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of roots of unity (U = %d):\n",poly[maxU].U);               for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxU].U     == poly[i].U  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of complex non-unity roots (Q = %d):\n",poly[maxQ].Q);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxQ].Q     == poly[i].Q  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of real non-unity roots (R = %d):\n",poly[maxR].R);         for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxR].R     == poly[i].R  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of non-zero coefficients (NNZ = %zu):\n", poly[maxNNZ].nnz); for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxNNZ].nnz == poly[i].nnz) printp(poly[i],extended_digits);
+    printf("\nMaximum Height (H = %zu):\n",poly[maxH].H);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxH].H     == poly[i].H  ) printp(poly[i],extended_digits);
+    printf("\nMaximum Length (L = %zu):\n",poly[maxL].L);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxL].L     == poly[i].L  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of roots outside unit disk (K = %zu):\n",poly[maxK].K);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxK].K     == poly[i].K  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of roots of unity (U = %zu):\n",poly[maxU].U);               for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxU].U     == poly[i].U  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of complex non-unity roots (Q = %zu):\n",poly[maxQ].Q);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxQ].Q     == poly[i].Q  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of real non-unity roots (R = %zu):\n",poly[maxR].R);         for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxR].R     == poly[i].R  ) printp(poly[i],extended_digits);
     printf("-----------------------------------------------------------------\n");
 
     mpf_clears(d,t,NULL);

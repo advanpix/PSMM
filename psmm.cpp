@@ -227,7 +227,7 @@ int main(int argc, char* argv[])
         printf("Coefficients = %s\n",args.getArgValue("coeffs").c_str());
         printf("Nonzeros     = %s\n",args.getArgValue("nnz").c_str());
         printf("Threshold    = %s\n",args.getArgValue("threshold").c_str());
-        printf("Known        = %d\n",known.size());
+        printf("Known        = %zu\n",known.size());
         printf("Polynomials  = %s\n",mpz2string(total_number_of_polynomials).c_str());
         printf("-----------------------------------------------------------------\n");
         fflush(stdout);
@@ -333,7 +333,7 @@ int main(int argc, char* argv[])
 
                             std::string time_left_str = sec2yhms(time_left,years,days,hours,minutes,seconds);
 
-                            printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %d,\tFOUND = %zu\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,candidates.size(),time_left_str.c_str());
+                            printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %zu,\tFOUND = %zu\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,candidates.size(),time_left_str.c_str());
 
                             last_report_time = current_time;
                             polys_per_report = 0;
@@ -517,7 +517,7 @@ int main(int argc, char* argv[])
                     //
                     // D M NNZ H L K U Q R Coefficients
                     //
-                    fprintf(foutput, "%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                    fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
                     for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
                     fprintf(foutput,"\n");
                     fflush(foutput);

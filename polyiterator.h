@@ -112,12 +112,11 @@ public:
 
             // Move on to the next number by adding 1 to the current number (avoid using expensive % and / operations).
             int carry = 1;
-            for(int i = 0; i < m_Nonzeros && (carry == 1); i++)
+            for(int i = 0; i < m_Nonzeros && carry == 1; i++)
             {
                 m_Number[i] += carry;
-
-                if(carry = (m_Number[i] >= m_Base))
-                    m_Number[i] = 0;
+                carry = (m_Number[i] >= m_Base) ? 1 : 0;
+                if(carry) m_Number[i] = 0;
             }
 
             // Switch to the next pattern in case of overflow.

@@ -85,7 +85,7 @@ inline void printp(const reciprocal_polynomial_t& poly, int digits = 72)
     // D M NNZ H L K U Q R Coefficients
     //
 
-    printf("%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+    printf("%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
     for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",int(poly.coeffs[j]));
 
     printf("\n");
@@ -134,13 +134,13 @@ inline void load_candidates_from_log(const std::string& filename, int N, std::ve
 
                 if(k != (poly.N/2+1))
                 {
-                    printf("Parsing error, N = %d, M = %.16f k = %d, poly.N/2+1 = %d %s\n",poly.N,poly.M,k,poly.N/2+1,original_line.c_str());
+                    printf("Parsing error, N = %zu, M = %.16f k = %zu, poly.N/2+1 = %zu %s\n",poly.N,poly.M,k,poly.N/2+1,original_line.c_str());
 
                     for(std::size_t i = 0; i < tokens.size(); i++)
-                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                        printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                     for(std::size_t i = 0; i < s_coeffs.size(); i++)
-                        printf("\ts_coeffs[%d] = %s\n",i,s_coeffs[i].c_str());
+                        printf("\ts_coeffs[%zu] = %s\n",i,s_coeffs[i].c_str());
 
                     exit(1);
                 }
@@ -212,9 +212,9 @@ inline void load_polynomials(const std::string& filename, std::vector<reciprocal
 
                 if(k != (poly.N/2+1))
                 {
-                    printf("Parsing error, N = %d, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
+                    printf("Parsing error, N = %zu, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
                     for(std::size_t i = 0; i < tokens.size(); i++)
-                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                        printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                     exit(1);
                 }
@@ -281,7 +281,7 @@ inline void merge_files_with_results(const std::string& input, const std::string
                 //
                 // D M NNZ H L K U Q R Coefficients
                 //
-                fprintf(foutput, "%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
                 for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
                 fprintf(foutput,"\n");
                 fflush(foutput);

@@ -61,9 +61,9 @@ inline void load_polynomials_old(const std::string& filename, std::vector<recipr
 
                 if(k != (poly.N/2+1))
                 {
-                    printf("Parsing error, N = %d, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
+                    printf("Parsing error, N = %zu, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
                     for(std::size_t i = 0; i < tokens.size(); i++)
-                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                        printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                     exit(1);
                 }
@@ -157,9 +157,9 @@ inline void convert_file(const std::string& srcfile, const std::string& dstfile,
 
                     if(k != (p.N/2+1))
                     {
-                        printf("Parsing error, N = %d, %s\n",p.N,original_line.c_str());
+                        printf("Parsing error, N = %zu, %s\n",p.N,original_line.c_str());
                         for(std::size_t i = 0; i < tokens.size(); i++)
-                            printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                            printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                         exit(1);
                     }
@@ -182,7 +182,7 @@ inline void convert_file(const std::string& srcfile, const std::string& dstfile,
 
                     if(PrevN != p.N)
                     {
-                        printf("N = %d\n",p.N);
+                        printf("N = %zu\n",p.N);
                         PrevN = p.N;
                     }
                 }
