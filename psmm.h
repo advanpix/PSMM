@@ -25,6 +25,9 @@
 #include <vector>
 #include <map>
 #include <algorithm>
+#include <atomic>
+#include <thread>
+#include <functional>
 #include <gmp.h>
 #include <gmpxx.h>
 #include <mps/mps.h>

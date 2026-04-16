@@ -247,100 +247,167 @@ int main(int argc, char* argv[])
 
         if(fromlog.empty())
         {
+            //
             // Run actual search if no input/log file was provided.
+            //
+            // Architecture:
+            //   1. The main thread drives the iterator and fills a batch of polynomials.
+            //   2. Mahler-measure computation is parallelized across `nthreads` workers
+            //      using a simple atomic work-stealing loop.  Each worker calls MPSolve
+            //      single-threaded (its own context), so there is no lock contention.
+            //   3. Results are processed sequentially (dedup, logging, candidates list).
+            //
+            // The batch size balances between amortizing thread-launch overhead and
+            // keeping memory footprint bounded.  256 polynomials per batch is a sweet
+            // spot for typical low-nnz sparse searches.
+            //
+
+            const std::size_t BATCH_SIZE = 256;
+
+            struct batch_item {
+                std::vector<int> coeffs;
+                int    nnz_value;
+                bool   skip;
+                double mahler;   // filled by workers
+            };
+
+            std::vector<batch_item> batch;
+            batch.reserve(BATCH_SIZE);
+
             for(std::size_t i = 0; i < nnz.size(); i++)
             {
                 std::vector<int> poly(degree/2+1);
                 reciprocal_polynomials_iterator p(degree,nnz[i],coeffs);
 
-                bool fcontinue = true;
-                while(fcontinue)
+                bool iterator_active = true;
+                while(iterator_active)
                 {
-                    bool skip = p.skip_next_polynomial(); // Skip next polynomials in a sequence (e.g. p(-x) and p(x) have the same roots by absolute value)
-                                                          // This can be extended, e.g. to detect non-primitive polynomials, or even by appliyng Graeffe's pre-screening.
-
-                    fcontinue = p.next_polynomial(poly);  // Get the next polynomial in a sequence.
-
-                    if(fcontinue)
+                    // ---- Phase 1: fill a batch from the iterator (main thread only) ----
+                    batch.clear();
+                    while(batch.size() < BATCH_SIZE && iterator_active)
                     {
-                        if(!skip)
+                        bool skip = p.skip_next_polynomial();
+                        iterator_active = p.next_polynomial(poly);
+                        if(iterator_active)
                         {
+                            batch.push_back({poly, nnz[i], skip, 0.0});
+                        }
+                    }
+
+                    if(batch.empty()) break;
+
+                    // ---- Phase 2: compute Mahler measure in parallel ----
+                    if(nthreads > 1)
+                    {
+                        std::atomic<std::size_t> next_idx{0};
+                        std::vector<std::thread> workers;
+                        workers.reserve(nthreads);
+                        for(int t = 0; t < nthreads; ++t)
+                        {
+                            workers.emplace_back([&](){
+                                while(true)
+                                {
+                                    const std::size_t idx = next_idx.fetch_add(1, std::memory_order_relaxed);
+                                    if(idx >= batch.size()) break;
+                                    auto& item = batch[idx];
+                                    if(!item.skip)
+                                    {
 #ifdef USE_FAST_MAHLER_ESTIMATOR
-                            double mahler = estimate_mahler_reciprocal_polynomial_d(poly,threshold,nthreads); // Estimate Mahler measure in double precision (fast).
+                                        item.mahler = estimate_mahler_reciprocal_polynomial_d(item.coeffs, threshold, /*mpsolve_threads=*/1);
 #else
-                            double mahler = compute_mahler_reciprocal_polynomial_d(poly,nthreads); // Compute Mahler measure exactly (find all roots, etc.)
+                                        item.mahler = compute_mahler_reciprocal_polynomial_d(item.coeffs, /*mpsolve_threads=*/1);
 #endif
-                            if(mahler > 1.0 && mahler <= threshold)
+                                    }
+                                }
+                            });
+                        }
+                        for(auto& w : workers) w.join();
+                    }
+                    else
+                    {
+                        // Single-threaded path — no thread overhead.
+                        for(auto& item : batch)
+                        {
+                            if(!item.skip)
                             {
-                                // Search if any of known polynomials have the same Mahler measure.
-                                int known_before = same_polynomial_found(degree, mahler, search_tolerance, known);
+#ifdef USE_FAST_MAHLER_ESTIMATOR
+                                item.mahler = estimate_mahler_reciprocal_polynomial_d(item.coeffs, threshold, /*mpsolve_threads=*/1);
+#else
+                                item.mahler = compute_mahler_reciprocal_polynomial_d(item.coeffs, /*mpsolve_threads=*/1);
+#endif
+                            }
+                        }
+                    }
+
+                    // ---- Phase 3: process results sequentially (main thread) ----
+                    for(auto& item : batch)
+                    {
+                        if(!item.skip)
+                        {
+                            if(item.mahler > 1.0 && item.mahler <= threshold)
+                            {
+                                int known_before = same_polynomial_found(degree, item.mahler, search_tolerance, known);
 
                                 if(known_before == 0)
                                 {
-                                    // Search if any of recently computed polynomials have the same Mahler measure.
-                                    int candidate_found_before = same_polynomial_found(degree, mahler, search_tolerance, candidates);
+                                    int candidate_found_before = same_polynomial_found(degree, item.mahler, search_tolerance, candidates);
 
                                     if(candidate_found_before == 0)
                                     {
-                                        // Unseen polynomial has been found, celebrate it with "***".
-                                        printf("*** %.16f\t\t",mahler);
-                                        reciprocal_polynomial_t p;
+                                        printf("*** %.16f\t\t",item.mahler);
+                                        reciprocal_polynomial_t rp;
 
-                                        p.N      = degree;
-                                        p.M      = mahler;
-                                        p.nnz    = nnz[i];
-                                        p.coeffs = poly;
+                                        rp.N      = degree;
+                                        rp.M      = item.mahler;
+                                        rp.nnz    = item.nnz_value;
+                                        rp.coeffs = item.coeffs;
 
-                                        candidates.push_back(p);
+                                        candidates.push_back(rp);
                                     }
                                     else
                                     {
-                                        // Polynomial was previousely found in the current session, mark it with "+++".
-                                        printf("+++ %.16f\t\t",mahler);
+                                        printf("+++ %.16f\t\t",item.mahler);
                                     }
                                 }
                                 else
                                 {
-                                    // Polynomial was known before, mark it with "---" as unimportant.
-                                    printf("--- %.16f  (%3d)\t",mahler,known_before);
+                                    printf("--- %.16f  (%3d)\t",item.mahler,known_before);
                                 }
 
-                                printf("NNZ = %d\t[",nnz[i]);
-                                for(size_t j = 0; j < poly.size()-1; j++) printf("%2d ",poly[j]);
-                                printf("%2d]\n",poly.back());
+                                printf("NNZ = %d\t[",item.nnz_value);
+                                for(size_t j = 0; j < item.coeffs.size()-1; j++) printf("%2d ",item.coeffs[j]);
+                                printf("%2d]\n",item.coeffs.back());
                                 fflush(stdout);
                             }
 
                             polynomials_processed++;
                         }
 
-                        // Compute & show some progress statistics
                         current_polynomial++;
                         polys_per_report++;
-
-                        auto current_time = std::chrono::high_resolution_clock::now();
-                        std::chrono::seconds elapsed_since_last_report = std::chrono::duration_cast<std::chrono::seconds>(current_time-last_report_time);
-
-                        if(elapsed_since_last_report.count() > period)
-                        {
-                            double pps = double(polys_per_report)/double(elapsed_since_last_report.count());
-
-                            mpz_sub_ui(polynomials_left,total_number_of_polynomials,current_polynomial);
-                            // Guard against divide-by-zero when the search rate rounds down to 0 pps
-                            // (happens briefly on very high-degree runs before the first few polys finish).
-                            const std::size_t pps_rounded = std::max<std::size_t>(1, static_cast<std::size_t>(std::round(pps)));
-                            mpz_div_ui(time_left,polynomials_left,pps_rounded);
-
-                            std::string time_left_str = sec2yhms(time_left,years,days,hours,minutes,seconds);
-
-                            printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %zu,\tFOUND = %zu\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,candidates.size(),time_left_str.c_str());
-
-                            last_report_time = current_time;
-                            polys_per_report = 0;
-                        }
-
-                        fflush(stdout);
                     }
+
+                    // ---- Progress reporting ----
+                    auto current_time = std::chrono::high_resolution_clock::now();
+                    std::chrono::seconds elapsed_since_last_report = std::chrono::duration_cast<std::chrono::seconds>(current_time-last_report_time);
+
+                    if(elapsed_since_last_report.count() > period)
+                    {
+                        double pps = double(polys_per_report)/double(elapsed_since_last_report.count());
+
+                        mpz_sub_ui(polynomials_left,total_number_of_polynomials,current_polynomial);
+                        const std::size_t pps_rounded = std::max<std::size_t>(1, static_cast<std::size_t>(std::round(pps)));
+                        mpz_div_ui(time_left,polynomials_left,pps_rounded);
+
+                        std::string time_left_str = sec2yhms(time_left,years,days,hours,minutes,seconds);
+
+                        printf("\tPPS = %.2f,\tNNZ = %3d,\tDONE = %zu,\tFOUND = %zu\tTIME LEFT = %s\n",pps,nnz[i],current_polynomial,candidates.size(),time_left_str.c_str());
+
+                        last_report_time = current_time;
+                        polys_per_report = 0;
+                    }
+
+                    fflush(stdout);
                 }
             }
         }
