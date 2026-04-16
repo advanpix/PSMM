@@ -86,7 +86,7 @@ inline void printp(const reciprocal_polynomial_t& poly, int digits = 72)
     //
 
     printf("%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
-    for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",int(poly.coeffs[j]));
+    for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",poly.coeffs[j]);
 
     printf("\n");
     fflush(stdout);
@@ -125,7 +125,7 @@ inline void load_candidates_from_log(const std::string& filename, int N, std::ve
                 std::string t_coeffs = tokens[2].substr(1,tokens[2].size()-2);
                 f_split_string(f_trim(t_coeffs),' ',s_coeffs);
 
-                std::vector<double>& coeffs = poly.coeffs;
+                std::vector<int>& coeffs = poly.coeffs;
                 coeffs.resize(poly.N/2+1);
 
                 std::size_t k = 0;
@@ -187,7 +187,7 @@ inline void load_polynomials(const std::string& filename, std::vector<reciprocal
                 //
 
                 reciprocal_polynomial_t poly;
-                std::vector<double>& coeffs = poly.coeffs;
+                std::vector<int>& coeffs = poly.coeffs;
 
                 poly.N  = atoi(tokens[0].c_str());
 
@@ -282,7 +282,7 @@ inline void merge_files_with_results(const std::string& input, const std::string
                 // D M NNZ H L K U Q R Coefficients
                 //
                 fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
-                for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
+                for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",poly.coeffs[j]);
                 fprintf(foutput,"\n");
                 fflush(foutput);
             }

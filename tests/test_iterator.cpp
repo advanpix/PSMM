@@ -26,26 +26,26 @@
 
 namespace {
 
-std::string encode(const std::vector<double>& poly)
+std::string encode(const std::vector<int>& poly)
 {
     std::ostringstream oss;
-    for (double c : poly) oss << static_cast<int>(c) << ',';
+    for (int c : poly) oss << c << ',';
     return oss.str();
 }
 
-std::size_t count_enumerated(int degree, int nnz, const std::vector<double>& coeffs)
+std::size_t count_enumerated(int degree, int nnz, const std::vector<int>& coeffs)
 {
-    std::vector<double> buf(degree / 2 + 1);
+    std::vector<int> buf(degree / 2 + 1);
     reciprocal_polynomials_iterator it(degree, nnz, coeffs);
     std::size_t n = 0;
     while (it.next_polynomial(buf)) ++n;
     return n;
 }
 
-std::size_t count_unique(int degree, int nnz, const std::vector<double>& coeffs)
+std::size_t count_unique(int degree, int nnz, const std::vector<int>& coeffs)
 {
     std::set<std::string> seen;
-    std::vector<double> buf(degree / 2 + 1);
+    std::vector<int> buf(degree / 2 + 1);
     reciprocal_polynomials_iterator it(degree, nnz, coeffs);
     while (it.next_polynomial(buf)) seen.insert(encode(buf));
     return seen.size();
@@ -66,10 +66,10 @@ std::size_t expected_total(int degree, int nnz_val, int base)
 
 TEST_CASE("Iterator enumerates the expected number of polynomials")
 {
-    const std::vector<double> coeffs_pm1 = {-1.0, 1.0};          // base = 2
-    const std::vector<double> coeffs_pm10 = {-1.0, 0.0, 1.0};    // base = 3
+    const std::vector<int> coeffs_pm1  = {-1, 1};          // base = 2
+    const std::vector<int> coeffs_pm10 = {-1, 0, 1};       // base = 3
 
-    struct Case { int degree; int nnz; const std::vector<double>* alphabet; };
+    struct Case { int degree; int nnz; const std::vector<int>* alphabet; };
     const std::vector<Case> cases = {
         {10, 1, &coeffs_pm1},
         {10, 2, &coeffs_pm1},
@@ -95,7 +95,7 @@ TEST_CASE("Iterator emits no duplicates when 0 is not in alphabet")
     // to a unique polynomial. (If 0 is in the alphabet, the iterator
     // intentionally over-enumerates; the main search loop uses the
     // alphabet {-1, 1} and relies on this invariant.)
-    const std::vector<double> alphabet = {-1.0, 1.0};
+    const std::vector<int> alphabet = {-1, 1};
     const std::size_t enumerated = count_enumerated(12, 3, alphabet);
     const std::size_t unique     = count_unique(12, 3, alphabet);
     CHECK(enumerated == unique);
@@ -108,18 +108,18 @@ TEST_CASE("Every emitted polynomial has a[0] = 1 and at most nnz nonzeros")
     // output can still have fewer than `nnz` nonzero entries, so we
     // check an upper bound. When 0 is absent from the alphabet, the
     // bound is tight.
-    const std::vector<double> alphabet_no_zero = {-1.0, 1.0};
-    const std::vector<double> alphabet_zero    = {-1.0, 0.0, 1.0};
+    const std::vector<int> alphabet_no_zero = {-1, 1};
+    const std::vector<int> alphabet_zero    = {-1, 0, 1};
     const int degree = 10, nnz = 2;
 
-    auto run = [&](const std::vector<double>& alphabet, bool tight){
-        std::vector<double> buf(degree / 2 + 1);
+    auto run = [&](const std::vector<int>& alphabet, bool tight){
+        std::vector<int> buf(degree / 2 + 1);
         reciprocal_polynomials_iterator it(degree, nnz, alphabet);
         std::size_t n = 0;
         while (it.next_polynomial(buf)) {
-            CHECK(buf.front() == doctest::Approx(1.0));
+            CHECK(buf.front() == 1);
             int count = 0;
-            for (std::size_t k = 1; k < buf.size(); ++k) count += (buf[k] != 0.0);
+            for (std::size_t k = 1; k < buf.size(); ++k) count += (buf[k] != 0);
             CHECK(count <= nnz);
             if (tight) CHECK(count == nnz);
             ++n;

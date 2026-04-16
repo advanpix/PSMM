@@ -34,7 +34,7 @@ TEST_CASE("Mahler measure (double) matches reference within 1e-12")
         CAPTURE(ref.M_string);
 
         const double M = compute_mahler_reciprocal_polynomial_d(
-            half_to_double(ref.coeffs), /*nthreads=*/1);
+            ref.coeffs, /*nthreads=*/1);
 
         // Double-precision gives ~15 correct digits. The stored value is
         // accurate to 72 digits so the truncated double is exact.

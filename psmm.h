@@ -35,7 +35,7 @@ typedef struct{
     std::size_t nnz;            // Number of non-zero coefficients among a[1]..a[N/2]. The a[0] = 1 is fixed hence not counted.
     std::size_t H;              // Polynomial height (maximum of the magnitudes of its coefficients).
     std::size_t L;              // Polynomial length (sum of the magnitudes of the coefficients).
-    std::vector<double> coeffs; // Polynomial coefficients. In case of reciprocal polynomials stores only half of coefficients a[0],...,a[N/2]
+    std::vector<int> coeffs;    // Polynomial coefficients. In case of reciprocal polynomials stores only half of coefficients a[0],...,a[N/2]
 
     // Properties of the roots
     std::size_t K;              // Number of roots outside the unit circle.

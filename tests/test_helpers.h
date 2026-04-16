@@ -71,17 +71,12 @@ inline std::vector<ref_polynomial_t> load_reference_polynomials(const std::strin
 }
 
 // Convert the half-representation to a full (0..N) coefficient vector.
-inline std::vector<double> expand_reciprocal(const std::vector<int>& half, int N)
+inline std::vector<int> expand_reciprocal(const std::vector<int>& half, int N)
 {
-    std::vector<double> full(N + 1, 0.0);
-    for (int k = 0; k <= N / 2; ++k) full[k] = static_cast<double>(half[k]);
+    std::vector<int> full(N + 1, 0);
+    for (int k = 0; k <= N / 2; ++k) full[k] = half[k];
     for (int k = 1; k <= N / 2; ++k) full[N / 2 + k] = full[N / 2 - k];
     return full;
-}
-
-inline std::vector<double> half_to_double(const std::vector<int>& half)
-{
-    return std::vector<double>(half.begin(), half.end());
 }
 
 #endif // PSMM_TEST_HELPERS_H

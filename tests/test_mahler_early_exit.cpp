@@ -56,7 +56,7 @@ TEST_CASE("Near-threshold polynomials are NOT falsely rejected by fast estimator
         ++checked;
 
         const double m = estimate_mahler_reciprocal_polynomial_d(
-            half_to_double(ref.coeffs), T, /*nthreads=*/1);
+            ref.coeffs, T, /*nthreads=*/1);
 
         CAPTURE(ref.N);
         CAPTURE(ref.M_string);
@@ -93,7 +93,7 @@ TEST_CASE("Over-threshold polynomials are still reported as over threshold")
     // Use p(x) = x^4 - 3*x^3 + x^2 - 3*x + 1 (reciprocal, large coeff).
     // a[0]=1, a[1]=-3, a[2]=1 in half-form. N=4.
 
-    std::vector<double> big = {1.0, -3.0, 1.0};
+    std::vector<int> big = {1, -3, 1};
     const double T = 1.3;
 
     const double m = estimate_mahler_reciprocal_polynomial_d(big, T, 1);

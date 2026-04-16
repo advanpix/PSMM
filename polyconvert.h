@@ -43,7 +43,7 @@ inline void load_polynomials_old(const std::string& filename, std::vector<recipr
                 // Example: 16  1.224278907222   2  1 1 0-1-1 0 1 1 1
                 //
                 reciprocal_polynomial_t poly;
-                std::vector<double>& coeffs = poly.coeffs;
+                std::vector<int>& coeffs = poly.coeffs;
 
                 poly.N  = atoi(tokens[0].c_str());
 

@@ -28,8 +28,8 @@
 TEST_CASE("Irreducible polynomial reports irreducible")
 {
     // x^2 + x + 1 (the cyclotomic Phi_3) — irreducible over Z.
-    std::vector<double> p = {1, 1, 1};
-    std::vector<std::vector<double>> factors;
+    std::vector<int> p = {1, 1, 1};
+    std::vector<std::vector<int>> factors;
 
     const bool irr = factor_polynomial(p, factors);
     CHECK(irr == true);
@@ -41,8 +41,8 @@ TEST_CASE("Polynomial with a repeated factor is NOT irreducible")
     // (x^2 + 1)^2 = x^4 + 2x^2 + 1. One distinct factor, multiplicity 2.
     // NTL returns length() == 1, so the old `length() == 1` test said
     // "irreducible" — that's the bug this test pins down.
-    std::vector<double> p = {1, 0, 2, 0, 1};
-    std::vector<std::vector<double>> factors;
+    std::vector<int> p = {1, 0, 2, 0, 1};
+    std::vector<std::vector<int>> factors;
 
     const bool irr = factor_polynomial(p, factors);
     CHECK(irr == false);
@@ -53,15 +53,15 @@ TEST_CASE("Polynomial with a repeated factor is NOT irreducible")
     if (factors.size() == 2) {
         CHECK(factors[0] == factors[1]);
         // The factor itself should be x^2 + 1 = [1, 0, 1].
-        CHECK(factors[0] == std::vector<double>{1, 0, 1});
+        CHECK(factors[0] == std::vector<int>{1, 0, 1});
     }
 }
 
 TEST_CASE("Polynomial with several distinct factors is reducible")
 {
     // x^4 - 1 = (x - 1)(x + 1)(x^2 + 1), three distinct factors, each mult 1.
-    std::vector<double> p = {-1, 0, 0, 0, 1};
-    std::vector<std::vector<double>> factors;
+    std::vector<int> p = {-1, 0, 0, 0, 1};
+    std::vector<std::vector<int>> factors;
 
     const bool irr = factor_polynomial(p, factors);
     CHECK(irr == false);

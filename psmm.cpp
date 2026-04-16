@@ -180,15 +180,15 @@ int main(int argc, char* argv[])
             return EXIT_FAILURE;
         }
 
-        std::vector<double> coeffs;
-        std::vector<int>    nnz;
+        std::vector<int> coeffs;
+        std::vector<int> nnz;
 
-        // Build set of possible coefficient values.
+        // Build set of possible coefficient values (integers).
         std::vector<std::string> coeffs_values;
         f_split_string(args.getArgValue("coeffs"),',',coeffs_values);
         for(std::size_t i = 0; i < coeffs_values.size(); i++)
             if(!coeffs_values[i].empty())
-                coeffs.push_back(std::stod(coeffs_values[i]));
+                coeffs.push_back(std::stoi(coeffs_values[i]));
 
         // Build list of nonzeros to consider.
         std::vector<std::string> nnz_values;
@@ -250,7 +250,7 @@ int main(int argc, char* argv[])
             // Run actual search if no input/log file was provided.
             for(std::size_t i = 0; i < nnz.size(); i++)
             {
-                std::vector<double> poly(degree/2+1);
+                std::vector<int> poly(degree/2+1);
                 reciprocal_polynomials_iterator p(degree,nnz[i],coeffs);
 
                 bool fcontinue = true;
@@ -306,8 +306,8 @@ int main(int argc, char* argv[])
                                 }
 
                                 printf("NNZ = %d\t[",nnz[i]);
-                                for(size_t j = 0; j < poly.size()-1; j++) printf("%2d ",int(poly[j]));
-                                printf("%2d]\n",int(poly.back()));
+                                for(size_t j = 0; j < poly.size()-1; j++) printf("%2d ",poly[j]);
+                                printf("%2d]\n",poly.back());
                                 fflush(stdout);
                             }
 
@@ -383,7 +383,7 @@ int main(int argc, char* argv[])
             //       In this case all factors are guaranteed to be reciprocal (since lower bound for non-reciprocal polynomials M(p) >= 1.324717..., see [Br51] and [Sm71]).
             //       Be cautious when "threshold" > 1.324717
             //
-            std::vector<std::vector<double>> factors;
+            std::vector<std::vector<int>> factors;
             bool irreducible = factor_reciprocal_polynomial(candidate.coeffs,factors);
 
             if(irreducible)
@@ -416,7 +416,7 @@ int main(int argc, char* argv[])
                 //
                 for(std::size_t j = 0; j < factors.size(); j++)
                 {
-                    std::vector<double>& factor = factors[j];
+                    std::vector<int>& factor = factors[j];
                     int degree = factors[j].size()-1;
 
                     //
@@ -518,7 +518,7 @@ int main(int argc, char* argv[])
                     // D M NNZ H L K U Q R Coefficients
                     //
                     fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F,extended_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
-                    for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
+                    for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",poly.coeffs[j]);
                     fprintf(foutput,"\n");
                     fflush(foutput);
                 }

@@ -18,7 +18,7 @@ inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomia
     //
 
     int N = 2 * (p.coeffs.size()-1); // = p.N;
-    std::vector<double> a(N+1);
+    std::vector<int> a(N+1);
 
     // Expand coefficients to full polynomial
     for(int k = 0; k <= N/2; k++) a[k]     = p.coeffs[k];
@@ -31,25 +31,24 @@ inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomia
     p.M = mpf_get_d(p.F);
 
     //
-    // Compute NNZ, for the half of the coefficients.
+    // Compute NNZ for the half of the coefficients (excluding the a[0] = 1 that is constant).
     //
-    p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
-    p.nnz-=1;  // ignore the a[0] = 1, which is constant.
+    p.nnz = 0;
+    for(std::size_t k = 1; k < p.coeffs.size(); ++k) p.nnz += (p.coeffs[k] != 0);
 
     //
-    // Compute NNZ, H(p) and L(p)
+    // Compute H(p) and L(p) over the full polynomial.
     //
-    // Well, we can do this using std::max_element and std::accumulate, but here we do this in one pass over the coeffcients.
     p.L = p.H = 0;
     for(std::size_t k = 0; k < a.size(); k++)
     {
-        std::size_t c = std::size_t(abs(a[k]));
+        const std::size_t c = static_cast<std::size_t>(std::abs(a[k]));
         p.H  = std::max(p.H,c);
         p.L += c;
     }
 }
 
-inline bool is_primitive_polynomial(const std::vector<double>& coeffs, std::vector<double>& divisors)
+inline bool is_primitive_polynomial(const std::vector<int>& coeffs, std::vector<int>& divisors)
 {
     divisors.clear();
 
@@ -81,10 +80,10 @@ inline bool is_primitive_polynomial(const std::vector<double>& coeffs, std::vect
     return (divisors.size() == 0);
 }
 
-inline bool is_primitive_reciprocal_polynomial(const std::vector<double>& coeffs, std::vector<double>& divisors)
+inline bool is_primitive_reciprocal_polynomial(const std::vector<int>& coeffs, std::vector<int>& divisors)
 {
     int N = 2 * (coeffs.size()-1);
-    std::vector<double> a(N+1);
+    std::vector<int> a(N+1);
 
     // Expand coefficients to full polynomial
     for(int k = 0; k <= N/2; k++) a[k]     = coeffs[k];
@@ -126,7 +125,7 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
     int maxNNZ(0), maxH(0),maxL(0),maxK(0), maxU(0), maxQ(0), maxR(0);
     for(std::size_t i = 0; i < poly.size(); i++)
     {
-        std::vector<double> divisors;
+        std::vector<int> divisors;
         bool is_primitive = is_primitive_reciprocal_polynomial(poly[i].coeffs,divisors);
 
         maxNNZ = (poly[maxNNZ].nnz < poly[i].nnz ? i : maxNNZ);

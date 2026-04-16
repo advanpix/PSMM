@@ -48,7 +48,8 @@ inline void compute_total_number_of_polynomials(mpz_t m, int degree, int base, s
 //
 // The class is iterator over the full set of possible polynomials.
 //
-// We assume coefficients have non-templated "double" type for simplicity and to make it uniform with the rest of the seartch (root finders, etc.).
+// Coefficients are always integers in practice (typically from {-1, 0, 1}),
+// so both the alphabet and emitted polynomial use `int`.
 //
 class reciprocal_polynomials_iterator
 {
@@ -57,18 +58,18 @@ public:
     { }
 
     reciprocal_polynomials_iterator(
-                                    int degree,                          // Degree of a polynomial
-                                    int nonzeros,                        // Number of non-zero coefficients, excluding the a[0] = a[n] = 1
-                                    const std::vector<double>& coeffs    // List of possible values of coefficients
+                                    int degree,                       // Degree of a polynomial
+                                    int nonzeros,                     // Number of non-zero coefficients, excluding the a[0] = a[n] = 1
+                                    const std::vector<int>& coeffs    // List of possible values of coefficients
                                    )
     {
         setup(degree,nonzeros,coeffs);
     }
 
     void setup(
-                int degree,                          // Degree of a polynomial, must be even.
-                int nonzeros,                        // Number of non-zero coefficients, excluding the a[0] = a[n] = 1
-                const std::vector<double>& coeffs    // List of possible values of coefficients
+                int degree,                       // Degree of a polynomial, must be even.
+                int nonzeros,                     // Number of non-zero coefficients, excluding the a[0] = a[n] = 1
+                const std::vector<int>& coeffs    // List of possible values of coefficients
               )
     {
         m_Degree         = degree;
@@ -83,7 +84,7 @@ public:
 
         // Build reverse look-up table to map coefficients to their indices.
         for(std::size_t i = 0; i < m_PossibleCoeffs.size(); i++)
-            m_CoeffsIndices[int(m_PossibleCoeffs[i])] = i;
+            m_CoeffsIndices[m_PossibleCoeffs[i]] = i;
 
         m_Pattern.resize(m_Degree/2);
         m_Number.resize(m_Nonzeros);
@@ -95,7 +96,7 @@ public:
     }
 
     // Returns n/2+1 coefficients of the next polynomial in a search set.
-    bool next_polynomial(std::vector<double>& polynomial)
+    bool next_polynomial(std::vector<int>& polynomial)
     {
         bool status = m_Status;
 
@@ -150,7 +151,7 @@ public:
                 {
                     if(m_Pattern[i] != 0)
                     {
-                        int a = m_PossibleCoeffs[m_Number[j]];
+                        const int a = m_PossibleCoeffs[m_Number[j]];
 
                         if((((i+1)>>1)&1) !=0 ) m_TransformedNumber[j] = m_CoeffsIndices[-a]; // c[i] = -a[i], if i = 2*k, k is odd
                         else                    m_TransformedNumber[j] = m_Number[j];         // c[i] =  a[i], if i = 2*k, k is even
@@ -168,7 +169,7 @@ public:
                 {
                     if(m_Pattern[i] != 0)
                     {
-                        int a = m_PossibleCoeffs[m_Number[j]];
+                        const int a = m_PossibleCoeffs[m_Number[j]];
 
                         if(((i+1)&1)!=0) m_TransformedNumber[j] = m_CoeffsIndices[-a]; // c[i] = -a[i], if i is odd
                         else             m_TransformedNumber[j] = m_Number[j];         // c[i] =  a[i], if i is even
@@ -272,8 +273,8 @@ private:
     int m_Degree;    // Degree of a polynomial
     int m_Nonzeros;  // Number of nonzero coefficients
 
-    std::vector<double> m_PossibleCoeffs;
-    std::map<int,int>   m_CoeffsIndices; // maps coefficients into their indices in m_PossibleCoeffs
+    std::vector<int>  m_PossibleCoeffs;
+    std::map<int,int> m_CoeffsIndices; // maps coefficients into their indices in m_PossibleCoeffs
 
     // Internal state of the iterator.
     std::vector<int> m_Pattern;  // Sparse pattern, =1 indicates the locations of non-zero polynomial coefficients. Length = n/2.

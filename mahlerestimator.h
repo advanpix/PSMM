@@ -11,7 +11,7 @@
 #ifndef PSMM_MAHLER_ESTIMATOR_H
 #define PSMM_MAHLER_ESTIMATOR_H
 
-inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<double>& coeffs, double threshold, int nthreads = 1)
+inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, double threshold, int nthreads = 1)
 {
     //
     // The function estimates Mahler measure of the reciprocal polynomial in double precision.
