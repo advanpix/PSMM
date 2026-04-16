@@ -31,6 +31,14 @@
 *.out
 *.app
 
-# Ignore build directory and build scripts
-/build/*
-*.sh
+# Ignore build directories
+/build/
+/build-*/
+/out/
+/.cache/
+CMakeUserPresets.json
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp

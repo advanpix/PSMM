@@ -1,63 +1,78 @@
-# 
+#
 # This file is part of "Polynomials with Small Mahler Measure" (PSMM) project.
-# 
-# Copyright (C) 2020, Advanpix LLC.
+#
+# Copyright (C) 2020-2026, Advanpix LLC.
 # License: http://www.gnu.org/licenses/gpl.html GPL version 3 or higher
-# 
+#
 # Authors:
 #   Pavel Holoborodko <pavel@advanpix.com>
-# 
+#
 
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.20)
 
-project(psmm LANGUAGES CXX)
+project(psmm LANGUAGES C CXX VERSION 0.2)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-set(CMAKE_VERBOSE_MAKEFILE on)
+
+set(CMAKE_CXX_STANDARD          17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS        OFF)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
-   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-set(SOURCES psmm.cpp)
+option(PSMM_FAST_ESTIMATOR "Use the Mahler-measure early-exit estimator in the main search loop" ON)
+option(PSMM_BUILD_TESTS    "Build PSMM unit and integration tests"                                ON)
+
+# ---- Dependencies ---------------------------------------------------------
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-if(NOT GMP_INCLUDE_DIRS OR NOT GMP_LIBRARIES)
-    find_package(GMP REQUIRED)
-endif()
+find_package(GMP    REQUIRED)
+find_package(GMPXX  REQUIRED)
+find_package(NTL    REQUIRED)
 
-if(NOT GMPXX_INCLUDE_DIRS OR NOT GMPXX_LIBRARIES)
-    find_package(GMPXX REQUIRED)
-endif()
+# MPSolve is built from our patched upstream via ExternalProject. The
+# subdirectory defines the imported target `mpsolve::mps`.
+add_subdirectory(mpsolve)
 
-if(NOT NTL_INCLUDE_DIRS OR NOT NTL_LIBRARIES)
-    find_package(NTL REQUIRED)
-endif()
+# ---- psmm executable ------------------------------------------------------
 
-if(NOT MPSOLVE_INCLUDE_DIRS OR NOT MPSOLVE_LIBRARIES)
-    find_package(MPSOLVE 3.2.1 REQUIRED)
-endif()
+add_executable(psmm psmm.cpp)
 
-add_executable(psmm ${SOURCES})
-
-target_link_libraries(psmm PUBLIC
+target_link_libraries(psmm PRIVATE
+    mpsolve::mps
     ${NTL_LIBRARIES}
-    ${MPSOLVE_LIBRARIES}
-    ${GMP_LIBRARIES}
     ${GMPXX_LIBRARIES}
+    ${GMP_LIBRARIES}
     Threads::Threads
 )
 
-target_include_directories(psmm PUBLIC
+target_include_directories(psmm PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_BINARY_DIR}
     ${GMP_INCLUDE_DIRS}
     ${GMPXX_INCLUDE_DIRS}
     ${NTL_INCLUDE_DIRS}
-    ${MPSOLVE_INCLUDE_DIRS}
 )
 
-install (TARGETS psmm DESTINATION ${CMAKE_INSTALL_PREFIX})
+if(PSMM_FAST_ESTIMATOR)
+    target_compile_definitions(psmm PRIVATE USE_FAST_MAHLER_ESTIMATOR)
+endif()
+
+target_compile_options(psmm PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wno-sign-compare -Wno-unused-parameter>
+)
+
+install(TARGETS psmm RUNTIME DESTINATION bin)
+
+# ---- Tests ----------------------------------------------------------------
+
+if(PSMM_BUILD_TESTS)
+    enable_testing()
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt)
+        add_subdirectory(tests)
+    endif()
+endif()
