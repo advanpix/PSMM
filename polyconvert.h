@@ -164,8 +164,6 @@ inline void convert_file(const std::string& srcfile, const std::string& dstfile,
                         exit(1);
                     }
 
-                    std::size_t K = atoi(tokens[2].c_str());
-
                     // Compute all the characteristics.
                     compute_all_properties_of_reciprocal_polynomial(p, bits, nthreads);
 
@@ -174,11 +172,10 @@ inline void convert_file(const std::string& srcfile, const std::string& dstfile,
                     for(std::size_t i = 0; i < p.N/2; i++) ofs << p.coeffs[i] << " ";
                     ofs << p.coeffs[p.N/2] << std::endl;
 
-                    //if(K != p.K)
-                    //{
-                    //    printf("Parsing error, N = %d, K(%d) != p.K(%d), %s\n", p.N, K, p.K,original_line.c_str());
-                    //    exit(1);
-                    //}
+                    // Historical cross-check against the K field from the source file was
+                    // disabled long ago; left as a note for anyone auditing the old format.
+                    //   const std::size_t K_from_file = static_cast<std::size_t>(atoi(tokens[2].c_str()));
+                    //   if(K_from_file != p.K) { ... report and exit ... }
 
                     if(PrevN != p.N)
                     {
