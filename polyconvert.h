@@ -43,14 +43,14 @@ inline void load_polynomials_old(const std::string& filename, std::vector<recipr
                 // Example: 16  1.224278907222   2  1 1 0-1-1 0 1 1 1
                 //
                 reciprocal_polynomial_t poly;
-                std::vector<double>& coeffs = poly.coeffs;
+                std::vector<int>& coeffs = poly.coeffs;
 
                 poly.N  = atoi(tokens[0].c_str());
 
                 // Read the Mahler measure in extended precision and convert to double for fast computations later on.
-                mpf_init2(poly.F,bits);
-                str2mpf(poly.F,tokens[1].c_str());
-                poly.M  = mpf_get_d(poly.F);
+                poly.F.set_prec(bits);
+                str2mpf(poly.F.get_mpf_t(),tokens[1].c_str());
+                poly.M  = poly.F.get_d();
 
                 poly.K  = atof(tokens[2].c_str());
                 coeffs.resize(poly.N/2+1);
@@ -61,9 +61,9 @@ inline void load_polynomials_old(const std::string& filename, std::vector<recipr
 
                 if(k != (poly.N/2+1))
                 {
-                    printf("Parsing error, N = %d, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
+                    printf("Parsing error, N = %zu, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
                     for(std::size_t i = 0; i < tokens.size(); i++)
-                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                        printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                     exit(1);
                 }
@@ -157,32 +157,29 @@ inline void convert_file(const std::string& srcfile, const std::string& dstfile,
 
                     if(k != (p.N/2+1))
                     {
-                        printf("Parsing error, N = %d, %s\n",p.N,original_line.c_str());
+                        printf("Parsing error, N = %zu, %s\n",p.N,original_line.c_str());
                         for(std::size_t i = 0; i < tokens.size(); i++)
-                            printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                            printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                         exit(1);
                     }
-
-                    std::size_t K = atoi(tokens[2].c_str());
 
                     // Compute all the characteristics.
                     compute_all_properties_of_reciprocal_polynomial(p, bits, nthreads);
 
                     // Write line to the new file
-                    ofs << p.N << " " << mpf2string(p.F,output_digits)<< " " << p.nnz<< " " << p.H<< " " << p.L << " " << p.K << " " << p.U<< " " << p.Q<< " " << p.R << " ";
+                    ofs << p.N << " " << mpf2string(p.F.get_mpf_t(),output_digits)<< " " << p.nnz<< " " << p.H<< " " << p.L << " " << p.K << " " << p.U<< " " << p.Q<< " " << p.R << " ";
                     for(std::size_t i = 0; i < p.N/2; i++) ofs << p.coeffs[i] << " ";
                     ofs << p.coeffs[p.N/2] << std::endl;
 
-                    //if(K != p.K)
-                    //{
-                    //    printf("Parsing error, N = %d, K(%d) != p.K(%d), %s\n", p.N, K, p.K,original_line.c_str());
-                    //    exit(1);
-                    //}
+                    // Historical cross-check against the K field from the source file was
+                    // disabled long ago; left as a note for anyone auditing the old format.
+                    //   const std::size_t K_from_file = static_cast<std::size_t>(atoi(tokens[2].c_str()));
+                    //   if(K_from_file != p.K) { ... report and exit ... }
 
                     if(PrevN != p.N)
                     {
-                        printf("N = %d\n",p.N);
+                        printf("N = %zu\n",p.N);
                         PrevN = p.N;
                     }
                 }

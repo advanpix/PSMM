@@ -18,7 +18,7 @@ inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomia
     //
 
     int N = 2 * (p.coeffs.size()-1); // = p.N;
-    std::vector<double> a(N+1);
+    std::vector<int> a(N+1);
 
     // Expand coefficients to full polynomial
     for(int k = 0; k <= N/2; k++) a[k]     = p.coeffs[k];
@@ -27,29 +27,29 @@ inline void compute_all_properties_of_reciprocal_polynomial(reciprocal_polynomia
     //
     // Compute roots, their properties and Mahler measure in extended precision.
     //
-    mpsolve_compute_mahler_with_properties(p.F, N, a.data(), p.K, p.U, p.Q, p.R, bits, nthreads);
-    p.M = mpf_get_d(p.F);
+    p.F.set_prec(bits);
+    mpsolve_compute_mahler_with_properties(p.F.get_mpf_t(), N, a.data(), p.K, p.U, p.Q, p.R, bits, nthreads);
+    p.M = p.F.get_d();
 
     //
-    // Compute NNZ, for the half of the coefficients.
+    // Compute NNZ for the half of the coefficients (excluding the a[0] = 1 that is constant).
     //
-    p.nnz = std::accumulate(p.coeffs.begin(),p.coeffs.end(),0.0,[](double& a,double& b)->double {return a += (b!=0);});
-    p.nnz-=1;  // ignore the a[0] = 1, which is constant.
+    p.nnz = 0;
+    for(std::size_t k = 1; k < p.coeffs.size(); ++k) p.nnz += (p.coeffs[k] != 0);
 
     //
-    // Compute NNZ, H(p) and L(p)
+    // Compute H(p) and L(p) over the full polynomial.
     //
-    // Well, we can do this using std::max_element and std::accumulate, but here we do this in one pass over the coeffcients.
     p.L = p.H = 0;
     for(std::size_t k = 0; k < a.size(); k++)
     {
-        std::size_t c = std::size_t(abs(a[k]));
+        const std::size_t c = static_cast<std::size_t>(std::abs(a[k]));
         p.H  = std::max(p.H,c);
         p.L += c;
     }
 }
 
-inline bool is_primitive_polynomial(const std::vector<double>& coeffs, std::vector<double>& divisors)
+inline bool is_primitive_polynomial(const std::vector<int>& coeffs, std::vector<int>& divisors)
 {
     divisors.clear();
 
@@ -81,10 +81,10 @@ inline bool is_primitive_polynomial(const std::vector<double>& coeffs, std::vect
     return (divisors.size() == 0);
 }
 
-inline bool is_primitive_reciprocal_polynomial(const std::vector<double>& coeffs, std::vector<double>& divisors)
+inline bool is_primitive_reciprocal_polynomial(const std::vector<int>& coeffs, std::vector<int>& divisors)
 {
     int N = 2 * (coeffs.size()-1);
-    std::vector<double> a(N+1);
+    std::vector<int> a(N+1);
 
     // Expand coefficients to full polynomial
     for(int k = 0; k <= N/2; k++) a[k]     = coeffs[k];
@@ -104,11 +104,11 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
         load_polynomials(filename,poly,extended_prec);
 
     printf("-----------------------------------------------------------------\n");
-    printf("Polynomials loaded from %s (%d polynomials in total) have following properties:\n",filename.c_str(),poly.size());
+    printf("Polynomials loaded from %s (%zu polynomials in total) have following properties:\n",filename.c_str(),poly.size());
 
     // Yes, I know, this is terrible and awfully inefficient, etc.
     // But I need this piece of code as an indication that I control my innner perfectionist.
-    std::sort(poly.begin(),poly.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F, b.F) < 0);});
+    std::sort(poly.begin(),poly.end(),[](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) { return (a.F < b.F); });
     printf("\nPolynomials with Minimum Mahler measure:\n");
 
     for(std::size_t i = 0; i < std::min(std::size_t(50),poly.size()); i++)
@@ -126,7 +126,7 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
     int maxNNZ(0), maxH(0),maxL(0),maxK(0), maxU(0), maxQ(0), maxR(0);
     for(std::size_t i = 0; i < poly.size(); i++)
     {
-        std::vector<double> divisors;
+        std::vector<int> divisors;
         bool is_primitive = is_primitive_reciprocal_polynomial(poly[i].coeffs,divisors);
 
         maxNNZ = (poly[maxNNZ].nnz < poly[i].nnz ? i : maxNNZ);
@@ -145,7 +145,7 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
 
         if(i+1 < poly.size())
         {
-            mpf_sub(t,poly[i+1].F,poly[i].F);
+            mpf_sub(t,poly[i+1].F.get_mpf_t(),poly[i].F.get_mpf_t());
             if(mpf_cmp(t,d) < 0) // t < d
             {
                 mpf_set(d,t);
@@ -154,17 +154,20 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
         }
     }
 
-    printf("\nPolynomials with nearest Mahler measures (diff = %.2e):\n", mpf_get_d(d));
-    printp(poly[min_diff_idx]  ,extended_digits);
-    printp(poly[min_diff_idx+1],extended_digits);
+    if(min_diff_idx >= 0)
+    {
+        printf("\nPolynomials with nearest Mahler measures (diff = %.2e):\n", mpf_get_d(d));
+        printp(poly[min_diff_idx]  ,extended_digits);
+        printp(poly[min_diff_idx+1],extended_digits);
+    }
 
-    printf("\nMaximum number of non-zero coefficients (NNZ = %d):\n", poly[maxNNZ].nnz); for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxNNZ].nnz == poly[i].nnz) printp(poly[i],extended_digits);
-    printf("\nMaximum Height (H = %d):\n",poly[maxH].H);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxH].H     == poly[i].H  ) printp(poly[i],extended_digits);
-    printf("\nMaximum Length (L = %d):\n",poly[maxL].L);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxL].L     == poly[i].L  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of roots outside unit disk (K = %d):\n",poly[maxK].K);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxK].K     == poly[i].K  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of roots of unity (U = %d):\n",poly[maxU].U);               for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxU].U     == poly[i].U  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of complex non-unity roots (Q = %d):\n",poly[maxQ].Q);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxQ].Q     == poly[i].Q  ) printp(poly[i],extended_digits);
-    printf("\nMaximum number of real non-unity roots (R = %d):\n",poly[maxR].R);         for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxR].R     == poly[i].R  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of non-zero coefficients (NNZ = %zu):\n", poly[maxNNZ].nnz); for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxNNZ].nnz == poly[i].nnz) printp(poly[i],extended_digits);
+    printf("\nMaximum Height (H = %zu):\n",poly[maxH].H);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxH].H     == poly[i].H  ) printp(poly[i],extended_digits);
+    printf("\nMaximum Length (L = %zu):\n",poly[maxL].L);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxL].L     == poly[i].L  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of roots outside unit disk (K = %zu):\n",poly[maxK].K);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxK].K     == poly[i].K  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of roots of unity (U = %zu):\n",poly[maxU].U);               for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxU].U     == poly[i].U  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of complex non-unity roots (Q = %zu):\n",poly[maxQ].Q);      for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxQ].Q     == poly[i].Q  ) printp(poly[i],extended_digits);
+    printf("\nMaximum number of real non-unity roots (R = %zu):\n",poly[maxR].R);         for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxR].R     == poly[i].R  ) printp(poly[i],extended_digits);
     printf("-----------------------------------------------------------------\n");
 
     mpf_clears(d,t,NULL);

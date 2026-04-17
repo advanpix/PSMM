@@ -28,33 +28,38 @@
 // Computes Mahler measure of the (general) polynomial with double precision accuracy.
 //
 
-inline double compute_mahler_general_polynomial_d(const std::vector<double>& coeffs, int nthreads = 1)
+inline double compute_mahler_general_polynomial_d(const std::vector<int>& coeffs, int nthreads = 1, mps_context* reuse_ctx = nullptr)
 {
     //
     // Find polynomial roots, compute Mahler measure for double precision.
     //
+    // When reuse_ctx != nullptr the caller owns the context and is responsible
+    // for pre-setting output_prec / output_goal / algorithm / concurrency.
+    // The function only creates+frees the polynomial object. This eliminates
+    // the mps_context_new/free overhead in the hot search loop (C1).
+    //
 
     int n = (coeffs.size()-1);  // Degree of the polynomial.
 
-    mps_context* s = mps_context_new();
+    const bool own_context = (reuse_ctx == nullptr);
+    mps_context* s = own_context ? mps_context_new() : reuse_ctx;
+
     mps_polynomial* poly = (mps_polynomial*)mps_monomial_poly_new(s,n);
 
     for(int i = 0; i <= n; i++)
-        mps_monomial_poly_set_coefficient_d(s,(mps_monomial_poly*)poly,i,coeffs[i],0.0); // mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,i,coeffs[i],0);
+        mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,i,coeffs[i],0);
 
-    //
-    // We use full 64-bit limb in GMP to get "double" precision (= 53 bits for mantissa).
-    // This pushes MPSolve to use GMP internally, and hence roots are stored in mpc_t format.
-    // We can get them directly by mps_context_get_roots_m.
-    // There is no speed merit in using the mps_context_get_roots_d (roots are stored in mpc_t format anyway).
-    //
     const int working_precision = 64;
 
-    mps_context_set_input_poly            (s, poly);
-    mps_context_set_output_prec           (s, working_precision);
-    mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
-    mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
-    mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
+    mps_context_set_input_poly(s, poly);
+
+    if(own_context)
+    {
+        mps_context_set_output_prec           (s, working_precision);
+        mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
+        mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
+        mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
+    }
 
     mps_mpsolve(s);
 
@@ -124,12 +129,12 @@ inline double compute_mahler_general_polynomial_d(const std::vector<double>& coe
     }
 
     mps_polynomial_free (s, poly);
-    mps_context_free (s);
+    if(own_context) mps_context_free (s);
 
     return mahler;
 }
 
-inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& coeffs, int nthreads = 1)
+inline double compute_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, int nthreads = 1, mps_context* reuse_ctx = nullptr)
 {
     //
     // The function computes Mahler measure of the reciprocal polynomial in double precision.
@@ -158,13 +163,13 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
     // (A) The most stable way in MPSolve 3.2.1
     //
     int N = 2 * (coeffs.size()-1);
-    std::vector<double> a(N+1);
+    std::vector<int> a(N+1);
 
     // Expand coefficients to full polynomial
     for(int k = 0; k <= N/2; k++) a[k]     = coeffs[k];
     for(int k = 1; k <= N/2; k++) a[N/2+k] = a[N/2-k];
 
-    return compute_mahler_general_polynomial_d(a, nthreads);
+    return compute_mahler_general_polynomial_d(a, nthreads, reuse_ctx);
 #else
 
     //
@@ -256,7 +261,7 @@ inline double compute_mahler_reciprocal_polynomial_d(const std::vector<double>& 
 //
 inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,                   // Mahler measure of the polynomial
                                                   int n,                            // Polynomial degree
-                                                  const double* coeffs,             // Full polynomial coefficients: a[0],...,a[n]
+                                                  const int* coeffs,                // Full polynomial coefficients: a[0],...,a[n]
                                                   std::size_t& K,                   // Number of roots outside the unit circle.
                                                   std::size_t& U,                   // Number of complex unity roots (go in pairs):           z = exp(i*t), z* = exp(-i*t).
                                                   std::size_t& Q,                   // Number of complex non-unity roots (go in quadruplets): z = r*exp(i*t), z* = r*exp(-i*t), 1/z = (1/r)*exp(-i*t), 1/z* = (1/r)*exp(i*t).
@@ -271,8 +276,7 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
     mps_polynomial* poly = (mps_polynomial*)mps_monomial_poly_new(s,n);
 
     for(int i = 0; i <= n; i++)
-        mps_monomial_poly_set_coefficient_d(s,(mps_monomial_poly*)poly,i,coeffs[i],0.0);
-//          mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,i,coeffs[i],0);
+        mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,i,coeffs[i],0);
 
     //
     // MPSolve uses GMP as extended precision engine.
@@ -362,7 +366,9 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
             }
         }
 
-        mpf_init2(mahler,target_precision);
+        // Caller owns `mahler`'s allocation and precision (see reciprocal_polynomial_t::F /
+        // mpf_class). Just copy the computed value into the caller's storage. If the caller's
+        // precision is lower than target_precision, GMP rounds to the caller's precision.
         mpf_set(mahler,m);
 
         mpf_clears(m,r,t,d,eps,NULL);

@@ -11,40 +11,35 @@
 #ifndef __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 #define __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 
-inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<reciprocal_polynomial_t>& polynomials)
+inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<reciprocal_polynomial_t>& polynomials)
 {
-    double min_diff = std::numeric_limits<double>::max();
-    int min_diff_degree = 0;
+    //
+    // Search for ANY polynomial with degree <= n whose Mahler measure
+    // is within tolerance of `mahler`. Returns the degree of the first
+    // match, or 0 if none found.
+    //
+    // The old implementation found the globally nearest polynomial by M
+    // and then checked its degree, which missed matches when a closer
+    // polynomial at higher degree shadowed a valid match at lower degree.
+    //
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
-        reciprocal_polynomial_t& p = polynomials[i];
+        const reciprocal_polynomial_t& p = polynomials[i];
 
-        //
-        // Precomputed are given with 1e-12 accuracy
-        // we skip last few digits so that rounding is not counted.
-        //
-        double diff = abs(p.M-m);
-        if(diff < min_diff)
+        if(p.N <= static_cast<std::size_t>(n))
         {
-            min_diff = diff;
-            min_diff_degree = p.N;
+            if(std::fabs(p.M - mahler) <= tolerance)
+                return p.N;
         }
     }
 
-    return std::pair<int,double>(min_diff_degree,min_diff);
-}
-
-inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<reciprocal_polynomial_t>& polynomials)
-{
-    std::pair<int,double> nearest_polynomial = find_nearest_polynomial(mahler,polynomials);
-    int found = (nearest_polynomial.second <= tolerance) && (nearest_polynomial.first <= n) ? nearest_polynomial.first : 0;
-    return found;
+    return 0;
 }
 
 inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision, std::vector<reciprocal_polynomial_t>& polynomials)
 {
     //
-    // We assume that p.F is computed
+    // We assume that p.F is computed.
     //
 
     mpf_t m, d, eps;
@@ -64,7 +59,7 @@ inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision,
 
         if(p.N <= n)
         {
-            mpf_sub(d,mahler,p.F);
+            mpf_sub(d,mahler,p.F.get_mpf_t());
             mpf_abs(d,d);
 
             if(mpf_cmp(d,m) <= 0)
@@ -85,8 +80,8 @@ inline void printp(const reciprocal_polynomial_t& poly, int digits = 72)
     // D M NNZ H L K U Q R Coefficients
     //
 
-    printf("%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
-    for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",int(poly.coeffs[j]));
+    printf("%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F.get_mpf_t(),digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+    for(std::size_t j = 0; j < poly.coeffs.size(); j++) printf("%d ",poly.coeffs[j]);
 
     printf("\n");
     fflush(stdout);
@@ -125,7 +120,7 @@ inline void load_candidates_from_log(const std::string& filename, int N, std::ve
                 std::string t_coeffs = tokens[2].substr(1,tokens[2].size()-2);
                 f_split_string(f_trim(t_coeffs),' ',s_coeffs);
 
-                std::vector<double>& coeffs = poly.coeffs;
+                std::vector<int>& coeffs = poly.coeffs;
                 coeffs.resize(poly.N/2+1);
 
                 std::size_t k = 0;
@@ -134,13 +129,13 @@ inline void load_candidates_from_log(const std::string& filename, int N, std::ve
 
                 if(k != (poly.N/2+1))
                 {
-                    printf("Parsing error, N = %d, M = %.16f k = %d, poly.N/2+1 = %d %s\n",poly.N,poly.M,k,poly.N/2+1,original_line.c_str());
+                    printf("Parsing error, N = %zu, M = %.16f k = %zu, poly.N/2+1 = %zu %s\n",poly.N,poly.M,k,poly.N/2+1,original_line.c_str());
 
                     for(std::size_t i = 0; i < tokens.size(); i++)
-                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                        printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                     for(std::size_t i = 0; i < s_coeffs.size(); i++)
-                        printf("\ts_coeffs[%d] = %s\n",i,s_coeffs[i].c_str());
+                        printf("\ts_coeffs[%zu] = %s\n",i,s_coeffs[i].c_str());
 
                     exit(1);
                 }
@@ -187,15 +182,15 @@ inline void load_polynomials(const std::string& filename, std::vector<reciprocal
                 //
 
                 reciprocal_polynomial_t poly;
-                std::vector<double>& coeffs = poly.coeffs;
+                std::vector<int>& coeffs = poly.coeffs;
 
                 poly.N  = atoi(tokens[0].c_str());
 
                 // Read the Mahler measure in extended precision and convert to double for fast computations later on.
-                mpf_init2(poly.F,bits);
-                str2mpf(poly.F,tokens[1].c_str());
+                poly.F.set_prec(bits);
+                str2mpf(poly.F.get_mpf_t(),tokens[1].c_str());
 
-                poly.M   = mpf_get_d(poly.F);
+                poly.M   = poly.F.get_d();
                 poly.nnz = atof(tokens[2].c_str());
                 poly.H   = atof(tokens[3].c_str());
                 poly.L   = atof(tokens[4].c_str());
@@ -212,9 +207,9 @@ inline void load_polynomials(const std::string& filename, std::vector<reciprocal
 
                 if(k != (poly.N/2+1))
                 {
-                    printf("Parsing error, N = %d, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
+                    printf("Parsing error, N = %zu, M = %.16f %s\n",poly.N,poly.M,original_line.c_str());
                     for(std::size_t i = 0; i < tokens.size(); i++)
-                        printf("\ttoken[%d] = %s\n",i,tokens[i].c_str());
+                        printf("\ttoken[%zu] = %s\n",i,tokens[i].c_str());
 
                     exit(1);
                 }
@@ -238,9 +233,8 @@ inline void merge_files_with_results(const std::string& input, const std::string
     for(std::size_t i = 0; i < filenames.size(); i++)
         load_polynomials(filenames[i],polynomials,precision);
 
-    // Sort list of merged polynomials by degree & Mahler measure.
-    std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (mpf_cmp(a.F,b.F) < 0); });
-    std::sort(polynomials.begin(),polynomials.end(),[](reciprocal_polynomial_t& a,reciprocal_polynomial_t &b) { return (a.N < b.N) || ((a.N == b.N) && (mpf_cmp(a.F,b.F) < 0)); });
+    // Sort list of merged polynomials by degree, tie-break by Mahler measure.
+    std::sort(polynomials.begin(),polynomials.end(),[](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) { return (a.N < b.N) || ((a.N == b.N) && (a.F < b.F)); });
 
     std::map<std::size_t,std::size_t> nresults;
 
@@ -250,7 +244,7 @@ inline void merge_files_with_results(const std::string& input, const std::string
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
         reciprocal_polynomial_t& p = polynomials[i];
-        if(!same_polynomial_found_m(p.N, p.F, verify_precision, verified))
+        if(!same_polynomial_found_m(p.N, p.F.get_mpf_t(), verify_precision, verified))
         {
             verified.push_back(p);
             nresults[p.N]++;
@@ -282,8 +276,8 @@ inline void merge_files_with_results(const std::string& input, const std::string
                 //
                 // D M NNZ H L K U Q R Coefficients
                 //
-                fprintf(foutput, "%3d %s %d %d %d %d %d %d %d ",poly.N,mpf2string(poly.F,output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
-                for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",int(poly.coeffs[j]));
+                fprintf(foutput, "%3zu %s %zu %zu %zu %zu %zu %zu %zu ",poly.N,mpf2string(poly.F.get_mpf_t(),output_digits).c_str(), poly.nnz, poly.H, poly.L, poly.K, poly.U, poly.Q, poly.R);
+                for(std::size_t j = 0; j < poly.coeffs.size(); j++) fprintf(foutput, "%d ",poly.coeffs[j]);
                 fprintf(foutput,"\n");
                 fflush(foutput);
             }

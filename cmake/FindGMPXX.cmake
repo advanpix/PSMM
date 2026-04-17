@@ -43,4 +43,4 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GMPXX DEFAULT_MSG
                                   GMPXX_INCLUDE_DIRS GMPXX_LIBRARIES GMPXX_VERSION_OK)
 
-mark_as_advanced(GMP_INCLUDES GMP_LIBRARIES)
+mark_as_advanced(GMPXX_INCLUDE_DIRS GMPXX_LIBRARIES)

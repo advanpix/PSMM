@@ -1,0 +1,60 @@
+Fix Advanpix Mahler early-exit threshold check (correctness).
+
+`mps_mahler_check_stop` marks a polynomial as over-threshold when
+
+    R > T || abs(R - r) > T
+
+where R is the centre of an Aberth inclusion disk and r its radius.
+Two problems with that predicate:
+
+1. `abs` resolves to the integer abs(int) from <stdlib.h>, not fabs.
+   With r ~ 1e-14 the expression abs(R-r) truncates to zero, making
+   the second disjunct effectively dead.
+
+2. `R > T` alone is optimistic. The true root can sit anywhere in
+   [R - r, R + r]; to decide "definitely outside the threshold
+   circle" we need
+
+       R - r > T.
+
+   With the old check the estimator can return 2*T (i.e. "reject") for
+   a polynomial whose true Mahler measure is actually below T, and
+   psmm.cpp will silently drop it. On long-running searches near
+   M(p) = 1.3 this can prune valid candidates.
+
+Replace all three phase-specific checks (float / DPE / MP) with the
+provably-safe R - r > T.
+
+Applies on top of 0001-advanpix-mahler-early-exit-api.patch.
+
+Author: Pavel Holoborodko <pavel@advanpix.com>
+
+--- a/src/libmps/unisolve/main.c
++++ b/src/libmps/unisolve/main.c
+@@ -678,7 +678,7 @@ mps_mahler_check_stop (mps_context * s)
+                   {
+                         double R = hypot(cplx_Re(s->root[i]->fvalue),cplx_Im(s->root[i]->fvalue));
+                         double r = s->root[i]->frad;
+-                        if(R > glb_threshold || abs(R-r) > glb_threshold)
++                        if((R - r) > glb_threshold)
+                         {
+                             glb_over_threshold = 1;
+                             return true;
+@@ -688,7 +688,7 @@ mps_mahler_check_stop (mps_context * s)
+                   {
+                         double R = hypot(rdpe_get_d(cdpe_Re(s->root[i]->dvalue)),rdpe_get_d(cdpe_Im(s->root[i]->dvalue)));
+                         double r = rdpe_get_d(s->root[i]->drad);
+-                        if(R > glb_threshold || abs(R-r) > glb_threshold)
++                        if((R - r) > glb_threshold)
+                         {
+                             glb_over_threshold = 1;
+                             return true;
+@@ -698,7 +698,7 @@ mps_mahler_check_stop (mps_context * s)
+                   {
+                         double R = hypot(mpf_get_d(mpc_Re(s->root[i]->mvalue)),mpf_get_d(mpc_Im(s->root[i]->mvalue)));
+                         double r = rdpe_get_d(s->root[i]->drad);
+-                        if(R > glb_threshold || abs(R-r) > glb_threshold)
++                        if((R - r) > glb_threshold)
+                         {
+                             glb_over_threshold = 1;
+                             return true;
