@@ -154,9 +154,12 @@ inline void show_statistics_of_polynomials(const std::string& filename, int exte
         }
     }
 
-    printf("\nPolynomials with nearest Mahler measures (diff = %.2e):\n", mpf_get_d(d));
-    printp(poly[min_diff_idx]  ,extended_digits);
-    printp(poly[min_diff_idx+1],extended_digits);
+    if(min_diff_idx >= 0)
+    {
+        printf("\nPolynomials with nearest Mahler measures (diff = %.2e):\n", mpf_get_d(d));
+        printp(poly[min_diff_idx]  ,extended_digits);
+        printp(poly[min_diff_idx+1],extended_digits);
+    }
 
     printf("\nMaximum number of non-zero coefficients (NNZ = %zu):\n", poly[maxNNZ].nnz); for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxNNZ].nnz == poly[i].nnz) printp(poly[i],extended_digits);
     printf("\nMaximum Height (H = %zu):\n",poly[maxH].H);                                 for(std::size_t i = 0; i < poly.size(); i++) if(poly[maxH].H     == poly[i].H  ) printp(poly[i],extended_digits);

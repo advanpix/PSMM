@@ -11,34 +11,29 @@
 #ifndef __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 #define __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 
-inline std::pair<int,double> find_nearest_polynomial(double m, std::vector<reciprocal_polynomial_t>& polynomials)
+inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<reciprocal_polynomial_t>& polynomials)
 {
-    double min_diff = std::numeric_limits<double>::max();
-    int min_diff_degree = 0;
+    //
+    // Search for ANY polynomial with degree <= n whose Mahler measure
+    // is within tolerance of `mahler`. Returns the degree of the first
+    // match, or 0 if none found.
+    //
+    // The old implementation found the globally nearest polynomial by M
+    // and then checked its degree, which missed matches when a closer
+    // polynomial at higher degree shadowed a valid match at lower degree.
+    //
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
-        reciprocal_polynomial_t& p = polynomials[i];
+        const reciprocal_polynomial_t& p = polynomials[i];
 
-        //
-        // Precomputed are given with 1e-12 accuracy
-        // we skip last few digits so that rounding is not counted.
-        //
-        double diff = abs(p.M-m);
-        if(diff < min_diff)
+        if(p.N <= static_cast<std::size_t>(n))
         {
-            min_diff = diff;
-            min_diff_degree = p.N;
+            if(std::fabs(p.M - mahler) <= tolerance)
+                return p.N;
         }
     }
 
-    return std::pair<int,double>(min_diff_degree,min_diff);
-}
-
-inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<reciprocal_polynomial_t>& polynomials)
-{
-    std::pair<int,double> nearest_polynomial = find_nearest_polynomial(mahler,polynomials);
-    int found = (nearest_polynomial.second <= tolerance) && (nearest_polynomial.first <= n) ? nearest_polynomial.first : 0;
-    return found;
+    return 0;
 }
 
 inline int same_polynomial_found_m(int n, mpf_srcptr mahler, int comp_precision, std::vector<reciprocal_polynomial_t>& polynomials)

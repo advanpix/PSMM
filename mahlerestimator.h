@@ -11,7 +11,7 @@
 #ifndef PSMM_MAHLER_ESTIMATOR_H
 #define PSMM_MAHLER_ESTIMATOR_H
 
-inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, double threshold, int nthreads = 1)
+inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, double threshold, int nthreads = 1, mps_context* reuse_ctx = nullptr)
 {
     //
     // The function estimates Mahler measure of the reciprocal polynomial in double precision.
@@ -20,39 +20,32 @@ inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& co
     // If this happens, then returned value = 2*T, simply indicating that M(p) is above threshold.
     // Otherwise (if all roots have magnitude < T) then M(p) computed properly.
     //
-    // This function is faster than complete root-finder. It is supposed to be used in main search loop for speed.
-    // After many tests, we see that function indeed faster but only for dense polynomials with large coefficients.
-    // In case of sparse polynomials with small coeffs (e.g. -1,1) - it doesn't show speed improvement.
-    // That is because such polynomials tend to have a lot of small roots (|z| < T) but overall M(p) = prod(|z|) > T.
-    //
-    // Following functions were implemented as part of MPSolve (otherwise linker was producing incorrect code):
-    //
-    //      mps_mahler_is_over_threshold
-    //      mps_mahler_mpsolve
-    //      mps_mahler_set_threshold
+    // When reuse_ctx != nullptr, the caller owns the context (pre-configured with output_prec / goal /
+    // algorithm / concurrency). The function only creates+frees the polynomial. The threshold is set
+    // per call via TLS (mps_mahler_set_threshold).
     //
 
     int n = 2 * (coeffs.size()-1); // Degree of the polynomial.
 
-    mps_context* s = mps_context_new();
+    const bool own_context = (reuse_ctx == nullptr);
+    mps_context* s = own_context ? mps_context_new() : reuse_ctx;
+
     mps_polynomial* poly = (mps_polynomial*)mps_monomial_poly_new(s,n);
 
     for(int i = 0; i <= n/2; i++) mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,    i,coeffs[i    ],0);
     for(int i = 1; i <= n/2; i++) mps_monomial_poly_set_coefficient_int(s,(mps_monomial_poly*)poly,n/2+i,coeffs[n/2-i],0);
 
-    //
-    // We use full 64-bit limb in GMP to get "double" precision (= 53 bits for mantissa).
-    // This pushes MPSolve to use GMP internally, and hence roots are stored in mpc_t format.
-    // We can get them directly by mps_context_get_roots_m.
-    // There is no speed merit in using the mps_context_get_roots_d (roots are stored in mpc_t format anyway).
-    //
     const int working_precision = 64;
 
-    mps_context_set_input_poly            (s, poly);
-    mps_context_set_output_prec           (s, working_precision);
-    mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
-    mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
-    mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
+    mps_context_set_input_poly(s, poly);
+
+    if(own_context)
+    {
+        mps_context_set_output_prec           (s, working_precision);
+        mps_context_set_output_goal           (s, MPS_OUTPUT_GOAL_APPROXIMATE);
+        mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
+        mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
+    }
 
     mps_mahler_set_threshold(threshold);
     mps_mahler_mpsolve(s);
@@ -131,7 +124,7 @@ inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& co
     }
 
     mps_polynomial_free (s, poly);
-    mps_context_free (s);
+    if(own_context) mps_context_free (s);
 
     return mahler;
 }

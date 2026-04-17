@@ -297,6 +297,13 @@ int main(int argc, char* argv[])
                     if(batch.empty()) break;
 
                     // ---- Phase 2: compute Mahler measure in parallel ----
+                    //
+                    // Each call creates its own mps_context (one-shot). Context reuse
+                    // was investigated (C1 in the review) but MPSolve's internal state
+                    // (error_state stickiness, zero_roots mismatch on degree change,
+                    // and observed heap corruption on reuse even at fixed degree)
+                    // makes it unsafe without deeper MPSolve patches.
+                    //
                     if(nthreads > 1)
                     {
                         std::atomic<std::size_t> next_idx{0};

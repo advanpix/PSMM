@@ -55,11 +55,11 @@ public:
         }
     }
 
-    const std::string& getArgValue(const std::string &option, const std::string &defaultValue = "") const
+    std::string getArgValue(const std::string &option, const std::string &defaultValue = "") const
     {
         auto it = m_Arguments.find(option);
         if(it != m_Arguments.end()) return it->second;
-        else return defaultValue;
+        return defaultValue;
     }
 
     bool argSupplied(const std::string &option) const
