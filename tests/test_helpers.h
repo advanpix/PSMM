@@ -12,7 +12,7 @@
 // Small shared utilities for PSMM tests.
 //
 // Reads the reference file tests/data/reference-polynomials.txt into a
-// vector of structs. Each line in the file follows the AllKnownParallel
+// vector of structs. Each line in the file follows the AllKnownAdvanpix
 // format:
 //
 //   N M NNZ H L K U Q R c_0 c_1 ... c_{N/2}

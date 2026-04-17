@@ -1,7 +1,7 @@
 # Curated reference set for PSMM unit/regression tests.
 #
-# Extracted verbatim from AllKnownParallel (Pavel Holoborodko, Advanpix).
-# Format matches AllKnownParallel:
+# Extracted verbatim from AllKnownAdvanpix (Pavel Holoborodko, Advanpix).
+# Format matches AllKnownAdvanpix:
 #
 #   N M NNZ H L K U Q R c_0 c_1 ... c_{N/2}
 #

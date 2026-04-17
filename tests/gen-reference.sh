@@ -1,15 +1,15 @@
 #!/bin/bash
 # Build tests/data/reference-polynomials.txt by picking real rows from
-# AllKnownParallel. This avoids transcription errors.
+# AllKnownAdvanpix. This avoids transcription errors.
 
 set -e
-SRC=/home/advanpix/Development/PSMM/AllKnownParallel
+SRC=/home/advanpix/Development/PSMM/AllKnownAdvanpix
 OUT=/home/advanpix/Development/PSMM/tests/data/reference-polynomials.txt
 
 header='# Curated reference set for PSMM unit/regression tests.
 #
-# Extracted verbatim from AllKnownParallel (Pavel Holoborodko, Advanpix).
-# Format matches AllKnownParallel:
+# Extracted verbatim from AllKnownAdvanpix (Pavel Holoborodko, Advanpix).
+# Format matches AllKnownAdvanpix:
 #
 #   N M NNZ H L K U Q R c_0 c_1 ... c_{N/2}
 #

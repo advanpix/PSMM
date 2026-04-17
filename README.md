@@ -130,8 +130,8 @@ with Mahler measure below the threshold.
     -threshold=1.3 \
     -threads=8 \
     -period=3600 \
-    -known=AllKnownParallel \
-    -addto=AllKnownParallel
+    -known=AllKnownAdvanpix \
+    -addto=AllKnownAdvanpix
 ```
 
 | Argument | Description |
@@ -149,7 +149,7 @@ with Mahler measure below the threshold.
 
 ```sh
 # Search degree 100, coefficients {-1, 1}, nnz 1-3, using 8 threads.
-# Skip polynomials already in AllKnownParallel; append new finds to it.
+# Skip polynomials already in AllKnownAdvanpix; append new finds to it.
 ./build/psmm \
     -degree=100 \
     -coeffs=-1,1 \
@@ -157,8 +157,8 @@ with Mahler measure below the threshold.
     -threshold=1.3 \
     -threads=8 \
     -period=3600 \
-    -known=AllKnownParallel \
-    -addto=AllKnownParallel \
+    -known=AllKnownAdvanpix \
+    -addto=AllKnownAdvanpix \
     > 100_psmm.txt
 ```
 
@@ -182,20 +182,20 @@ results can be extracted from the log and re-verified:
     -threshold=1.3 \
     -threads=8 \
     -fromlog=100_psmm.txt \
-    -known=AllKnownParallel \
-    -addto=AllKnownParallel
+    -known=AllKnownAdvanpix \
+    -addto=AllKnownAdvanpix
 ```
 
 ### Merge
 
 Combine multiple result files, remove duplicates, and produce a single
 sorted output. To fold new search results into the master file, include
-`AllKnownParallel` as one of the inputs:
+`AllKnownAdvanpix` as one of the inputs:
 
 ```sh
 ./build/psmm \
-    -merge=AllKnownParallel,results_100.txt,results_200.txt \
-    -output=AllKnownParallel
+    -merge=AllKnownAdvanpix,results_100.txt,results_200.txt \
+    -output=AllKnownAdvanpix
 ```
 
 All inputs are read first, then deduplicated by extended-precision Mahler
@@ -210,17 +210,17 @@ nearest pair, extremal values of NNZ, H, L, K, U, Q, R, and any
 non-primitive polynomials:
 
 ```sh
-./build/psmm -analyze=AllKnownParallel
+./build/psmm -analyze=AllKnownAdvanpix
 ```
 
 ## Data files
 
 | File | Description |
 |---|---|
-| `AllKnownParallel` | Extended set of known polynomials with M(p) < 1.3, found by Advanpix. 72-digit Mahler measures. ~49k entries. |
+| `AllKnownAdvanpix` | Extended set of known polynomials with M(p) < 1.3, found by Advanpix. 72-digit Mahler measures. ~49k entries. |
 | `Known180` | Michael Mossinghoff's historical list through degree 180 ([source](http://www.cecm.sfu.ca/~mjm/Lehmer/lists/)). Legacy format with 13-digit precision. |
 
-**File format** (AllKnownParallel):
+**File format** (AllKnownAdvanpix):
 
 ```
 N M NNZ H L K U Q R c_0 c_1 ... c_{N/2}
