@@ -189,16 +189,19 @@ results can be extracted from the log and re-verified:
 ### Merge
 
 Combine multiple result files, remove duplicates, and produce a single
-sorted output:
+sorted output. To fold new search results into the master file, include
+`AllKnownParallel` as one of the inputs:
 
 ```sh
 ./build/psmm \
-    -merge=results_100.txt,results_200.txt,results_300.txt \
-    -output=AllKnownCombined
+    -merge=AllKnownParallel,results_100.txt,results_200.txt \
+    -output=AllKnownParallel
 ```
 
-This is useful for consolidating results from parallel searches at
-different degrees.
+All inputs are read first, then deduplicated by extended-precision Mahler
+measure and sorted by degree. The `-output` file is rewritten with the
+clean union. This is the standard way to consolidate results from parallel
+searches at different degrees back into a single master file.
 
 ### Analyze
 
