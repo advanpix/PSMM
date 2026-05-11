@@ -33,6 +33,82 @@ central open problems in number theory.
   </tr>
 </table>
 
+## Results
+
+The `AllKnownAdvanpix` file contains **48,341 primitive irreducible reciprocal
+polynomials** with Mahler measure below 1.3, collected by exhaustive search up
+to degree 456. Below are the record-holders in each category — a snapshot of
+what the search has discovered.
+
+### Lehmer's polynomial — the smallest known Mahler measure
+
+$$P(x) = x^{10} + x^9 - x^7 - x^6 - x^5 - x^4 - x^3 + x + 1$$
+
+$$M(P) \approx 1.17628081825991750654\ldots$$
+
+Discovered by D. H. Lehmer in 1933 and still the smallest known. Whether any
+smaller value M(P) > 1 exists is **Lehmer's problem** — one of the oldest open
+questions in number theory.
+
+### Record holders
+
+| Record | Value | Degree | M(P) | NNZ | H | L | K | U | Q | R |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| Smallest M (Lehmer) | M &asymp; 1.17628 | 10 | — | 4 | 1 | 9 | 1 | 8 | 0 | 2 |
+| Most non-zero coeffs | NNZ = 212 | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
+| Largest height | H = 29 | 348 | 1.25431… | 168 | 29 | 3657 | 40 | 268 | 80 | 0 |
+| Largest length | L = 4173 | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
+| Most roots outside &#124;z&#124;=1 | K = 76 | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
+| Most roots on &#124;z&#124;=1 | U = 396 | 456 | 1.25491… | 3 | 1 | 7 | 30 | 396 | 60 | 0 |
+| Most complex non-unity | Q = 152 | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
+| Most real non-unity | R = 4 | 20 | 1.25363… | 8 | 1 | 17 | 2 | 16 | 0 | 4 |
+
+NNZ = non-zero half-coefficients · H = height (max &#124;c&#124;) ·
+L = length (sum &#124;c&#124;) · K = roots outside unit disk ·
+U = roots of unity (pairs) · Q = complex non-unity (quadruplets) ·
+R = real non-unity (pairs).
+
+### Sparsest extremal polynomial — the Max-U record
+
+A degree-456 polynomial with only **three non-zero half-coefficients** packs
+**396 roots onto the unit circle** in conjugate pairs:
+
+$$P(x) = x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$$
+
+$$M(P) \approx 1.25491475757884793378\ldots, \quad \deg P = 456, \quad U = 396, \quad K = 30, \quad Q = 60$$
+
+The seven nonzero terms hide an extraordinarily rich root structure. This
+kind of sparse construction is reminiscent of Salem-Boyd polynomials and is
+the kind of result that motivates exhaustive sparse-polynomial searches.
+
+### Polynomial with the most real non-unity roots
+
+The degree-20 polynomial with the smallest Mahler measure among those with
+**R = 4** real non-unity roots (two reciprocal pairs):
+
+$$P(x) = \sum_{k=17}^{20} x^k \;-\; \sum_{k=6}^{14} x^k \;+\; \sum_{k=0}^{3} x^k$$
+
+$$M(P) \approx 1.25363556570886317997\ldots, \quad \deg P = 20, \quad K = 2, \quad U = 16, \quad R = 4$$
+
+Equivalently, with all 21 coefficients written out:
+
+$$P(x) = x^{20} + x^{19} + x^{18} + x^{17} - x^{14} - x^{13} - x^{12} - x^{11} - x^{10} - x^9 - x^8 - x^7 - x^6 + x^3 + x^2 + x + 1$$
+
+### Densest extremal polynomials
+
+The polynomials maximising height (H), length (L), and non-zero count (NNZ)
+all live near degree 350–432 and have hundreds of non-zero coefficients with
+intricate combinatorial structure. Their full coefficient vectors are too
+large to render usefully here — find them in `AllKnownAdvanpix`:
+
+- **NNZ = 212 / L = 4173 / H = 23** champion: degree 432, M &asymp; 1.25541, 212
+  non-zero half-coefficients out of 217, height 23, length 4173.
+- **H = 29** champion: degree 348, M &asymp; 1.25431, 168 non-zero
+  half-coefficients, max single coefficient 29.
+- **K = 76 / Q = 152** champion: degree 452, M &asymp; 1.28530. 151 non-zero
+  half-coefficients with a striking periodic (1, &minus;1, 0) signature that
+  yields 76 roots outside the unit disk and 152 complex roots off the disk.
+
 ## How it works
 
 ### Search space
