@@ -5,9 +5,13 @@
 Exhaustive search for primitive, irreducible, reciprocal integer polynomials
 whose [Mahler measure](https://en.wikipedia.org/wiki/Mahler_measure) is below
 a given threshold (typically M(p) < 1.3). The smallest known Mahler measure
-greater than 1 is Lehmer's number (M &asymp; 1.17628), achieved by a degree-10
-polynomial found in 1933. Whether smaller values exist remains one of the
-central open problems in number theory.
+greater than 1 is **Lehmer's number**, achieved by a degree-10 polynomial
+discovered by D. H. Lehmer in 1933:
+
+$$P(x) = x^{10} + x^9 - x^7 - x^6 - x^5 - x^4 - x^3 + x + 1, \qquad M(P) \approx 1.17628081825991750654\ldots$$
+
+Whether any smaller value $M(P) > 1$ exists is **Lehmer's problem** —
+one of the oldest open questions in number theory.
 
 <table>
   <tr>
@@ -16,8 +20,7 @@ central open problems in number theory.
         <img src="images/lehmer_1k.png" width="100%" alt="Newton convergence basins for Lehmer's polynomial"/>
       </a>
       <br/>
-      <sub><b>Newton convergence basins</b> for Lehmer's polynomial<br/>
-      P(x) = x<sup>10</sup> + x<sup>9</sup> &minus; x<sup>7</sup> &minus; x<sup>6</sup> &minus; x<sup>5</sup> &minus; x<sup>4</sup> &minus; x<sup>3</sup> + x + 1.<br/>
+      <sub><b>Newton convergence basins</b> for Lehmer's polynomial.<br/>
       The 10 roots are marked with black crosses; each colored region is the<br/>
       basin of attraction of one root under Newton's iteration.</sub>
     </td>
@@ -36,7 +39,7 @@ central open problems in number theory.
 ## Results
 
 The `AllKnownAdvanpix` database contains **48,341 primitive irreducible
-reciprocal polynomials** with Mahler measure M(P) < 1.3, collected by
+reciprocal polynomials** with Mahler measure $M(P) < 1.3$, collected by
 exhaustive search up to degree 456. It is a strict superset of
 Mossinghoff's historical `Known180` list (~8,500 polynomials up to
 degree 180) — **all polynomials of degree > 180 in our database are new
@@ -65,36 +68,26 @@ The root counts satisfy $2K + U + 2(Q + R) = N$.
 Storage in `AllKnownAdvanpix` is by half-coefficients $(a_0, a_1, \ldots, a_{N/2})$;
 the full polynomial is recovered by reciprocity $a_k = a_{N-k}$.
 
-### Lehmer's polynomial — the smallest known Mahler measure
-
-$$P(x) = x^{10} + x^9 - x^7 - x^6 - x^5 - x^4 - x^3 + x + 1$$
-
-$$M(P) \approx 1.17628081825991750654\ldots$$
-
-Discovered by D. H. Lehmer in 1933 and still the smallest known. Whether any
-smaller value $M(P) > 1$ exists is **Lehmer's problem** — one of the oldest
-open questions in number theory.
-
 ### Record holders
 
 | Record | Value | Origin | Degree | M(P) | NNZ | H | L | K | U | Q | R |
 |---|---:|:---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
 | Smallest M (Lehmer) | M &asymp; 1.17628 | Known180 | 10 | 1.17628… | 4 | 1 | 9 | 1 | 8 | 0 | 2 |
 | Most real non-unity | R = 4 | Known180 | 20 | 1.25363… | 8 | 1 | 17 | 2 | 16 | 0 | 4 |
-| Largest height | H = 29 | **Advanpix** | 348 | 1.25431… | 168 | 29 | 3657 | 40 | 268 | 80 | 0 |
-| Most non-zero coeffs | NNZ = 212 | **Advanpix** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
-| Largest length | L = 4173 | **Advanpix** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
-| Most roots outside &#124;z&#124;=1 | K = 76 | **Advanpix** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
-| Most complex non-unity | Q = 152 | **Advanpix** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
-| Most roots on &#124;z&#124;=1 | U = 396 | **Advanpix** | 456 | 1.25491… | 3 | 1 | 7 | 30 | 396 | 60 | 0 |
+| Largest height | H = 29 | **New** | 348 | 1.25431… | 168 | 29 | 3657 | 40 | 268 | 80 | 0 |
+| Most non-zero coeffs | NNZ = 212 | **New** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
+| Largest length | L = 4173 | **New** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
+| Most roots outside &#124;z&#124;=1 | K = 76 | **New** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
+| Most complex non-unity | Q = 152 | **New** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
+| Most roots on &#124;z&#124;=1 | U = 396 | **New** | 456 | 1.25491… | 3 | 1 | 7 | 30 | 396 | 60 | 0 |
 
-Six of the eight category records are Advanpix discoveries — they live at
+Six of the eight category records are new discoveries — they live at
 degrees 348, 432, 452, and 456, well above the 180-degree boundary of the
-prior literature. The two records inside the classical regime
-(Lehmer's M-record at degree 10, and the R-record at degree 20) are
-pre-existing historical entries included for completeness.
+prior literature. The two records inside the classical regime (Lehmer's
+M-record at degree 10, and the R-record at degree 20) are pre-existing
+historical entries included for completeness.
 
-### Sparsest extremal polynomial — the Max-U record (Advanpix)
+### Sparsest extremal polynomial — the Max-U record (New)
 
 A degree-456 polynomial with only **three non-zero half-coefficients** packs
 **396 roots onto the unit circle** in conjugate pairs:
@@ -123,7 +116,7 @@ $$P(x) = x^{20} + x^{19} + x^{18} + x^{17} - x^{14} - x^{13} - x^{12} - x^{11} -
 This polynomial is part of the historical `Known180` list (it predates
 the present project), and remains the R-record in the combined database.
 
-### Densest extremal polynomials (Advanpix)
+### Densest extremal polynomials (New)
 
 The polynomials maximising height ($H$), length ($L$), and non-zero count
 ($\mathrm{NNZ}$) all live near degree 350–432 and have hundreds of non-zero
@@ -348,7 +341,7 @@ non-primitive polynomials:
 
 | File | Description |
 |---|---|
-| `AllKnownAdvanpix` | Extended set of known polynomials with M(p) < 1.3, found by Advanpix. 72-digit Mahler measures. ~49k entries. |
+| `AllKnownAdvanpix` | Extended set of known polynomials with M(p) < 1.3, including all entries from `Known180` plus ~40k new finds at degrees > 180 from this project. 72-digit Mahler measures. |
 | `Known180` | Michael Mossinghoff's historical list through degree 180 ([source](http://www.cecm.sfu.ca/~mjm/Lehmer/lists/)). Legacy format with 13-digit precision. |
 
 **File format** (AllKnownAdvanpix):
