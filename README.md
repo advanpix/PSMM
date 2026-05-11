@@ -9,6 +9,30 @@ greater than 1 is Lehmer's number (M &asymp; 1.17628), achieved by a degree-10
 polynomial found in 1933. Whether smaller values exist remains one of the
 central open problems in number theory.
 
+<table>
+  <tr>
+    <td align="center">
+      <a href="images/lehmer.png">
+        <img src="images/lehmer_1k.png" width="100%" alt="Newton convergence basins for Lehmer's polynomial"/>
+      </a>
+      <br/>
+      <sub><b>Newton convergence basins</b> for Lehmer's polynomial<br/>
+      P(x) = x<sup>10</sup> + x<sup>9</sup> &minus; x<sup>7</sup> &minus; x<sup>6</sup> &minus; x<sup>5</sup> &minus; x<sup>4</sup> &minus; x<sup>3</sup> + x + 1.<br/>
+      The 10 roots are marked with black crosses; each colored region is the<br/>
+      basin of attraction of one root under Newton's iteration.</sub>
+    </td>
+    <td align="center">
+      <a href="images/lehmer_0.25.png">
+        <img src="images/lehmer_0.25_1k.png" width="100%" alt="Zoom-in showing fractal basin boundaries"/>
+      </a>
+      <br/>
+      <sub><b>Zoom-in</b> on a 0.25&times;0.25 region of the basin boundary,<br/>
+      revealing the fractal self-similar structure.<br/>
+      Click any image for the full 4096&times;4096 version.</sub>
+    </td>
+  </tr>
+</table>
+
 ## How it works
 
 ### Search space
