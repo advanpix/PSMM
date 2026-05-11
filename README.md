@@ -58,12 +58,16 @@ with $a_k = a_{N-k}$ (so $a_0 = a_N = 1$):
 | $\mathrm{NNZ}$ | Number of non-zero coefficients among $a_1, \ldots, a_{N/2}$ (i.e. the **half-coefficients**, excluding the fixed $a_0 = 1$). |
 | $H(P) = \max_k \|a_k\|$ | **Height** — maximum coefficient magnitude (over the full polynomial). |
 | $L(P) = \sum_k \|a_k\|$ | **Length** — sum of coefficient magnitudes (over the full polynomial). |
-| $K$ | Number of roots strictly outside the unit disk ($\|z\| > 1$). |
-| $U$ | Number of roots on the unit circle, counted as conjugate pairs $\\{z, \bar z\\}$. |
-| $Q$ | Number of complex non-unity roots, counted as Salem quadruplets $\\{z, \bar z, 1/z, 1/\bar z\\}$. |
-| $R$ | Number of real non-unity roots, counted as reciprocal pairs $\\{z, 1/z\\}$. |
+| $K$ | Count of (individual) roots strictly outside the unit disk ($\|z\| > 1$). |
+| $U$ | Count of roots on the unit circle. They come in complex-conjugate pairs $\\{z, \bar z\\}$, so $U$ is even. |
+| $Q$ | Count of complex non-unity roots ($\|z\| \neq 1$, $\mathrm{Im}\,z \neq 0$). They come in Salem quadruplets $\\{z, \bar z, 1/z, 1/\bar z\\}$, so $Q$ is a multiple of 4. |
+| $R$ | Count of real non-unity roots ($\mathrm{Im}\,z = 0$, $\|z\| \neq 1$). They come in reciprocal pairs $\\{z, 1/z\\}$, so $R$ is even. |
 
-The root counts satisfy $2K + U + 2(Q + R) = N$.
+For a reciprocal polynomial the roots satisfy $z \leftrightarrow 1/z$, so the
+number of roots inside the unit disk equals the number outside.
+This gives two useful identities:
+
+$$2K + U = N, \qquad Q + R = 2K.$$
 
 Storage in `AllKnownAdvanpix` is by half-coefficients $(a_0, a_1, \ldots, a_{N/2})$;
 the full polynomial is recovered by reciprocity $a_k = a_{N-k}$.
