@@ -118,20 +118,46 @@ the present project), and remains the R-record in the combined database.
 
 ### Densest extremal polynomials (New)
 
-The polynomials maximising height ($H$), length ($L$), and non-zero count
-($\mathrm{NNZ}$) all live near degree 350–432 and have hundreds of non-zero
-coefficients with intricate combinatorial structure. Their full coefficient
-vectors are too large to render usefully here — find them in
-`AllKnownAdvanpix`:
+The polynomials maximising height ($H$), length ($L$), non-zero count
+($\mathrm{NNZ}$), and root count outside the unit disk ($K$) all live near
+degrees 350–452 and have hundreds of non-zero coefficients with intricate
+combinatorial structure. Click any thumbnail below for the full polynomial
+typeset in LaTeX:
 
-- **NNZ = 212 / L = 4173 / H = 23** champion: degree 432, $M \approx 1.25541$,
-  212 non-zero half-coefficients out of 217, height 23, length 4173.
-- **H = 29** champion: degree 348, $M \approx 1.25431$, 168 non-zero
-  half-coefficients, max single coefficient 29.
-- **K = 76 / Q = 152** champion: degree 452, $M \approx 1.28530$. 151 non-zero
-  half-coefficients with a striking periodic $(1, -1, 0)$ signature that
-  yields 76 roots outside the unit disk and 152 complex roots off the
-  disk.
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="images/champion_nnz212.png">
+        <img src="images/champion_nnz212.png" width="100%" alt="NNZ=212 champion polynomial"/>
+      </a>
+      <br/>
+      <sub><b>NNZ = 212 / L = 4173 / H = 23</b><br/>
+      degree 432, M &asymp; 1.25541<br/>
+      212 non-zero half-coefficients,<br/>
+      height 23, length 4173</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="images/champion_h29.png">
+        <img src="images/champion_h29.png" width="100%" alt="H=29 champion polynomial"/>
+      </a>
+      <br/>
+      <sub><b>H = 29</b><br/>
+      degree 348, M &asymp; 1.25431<br/>
+      168 non-zero half-coefficients,<br/>
+      max single coefficient 29</sub>
+    </td>
+    <td align="center" width="33%">
+      <a href="images/champion_k76.png">
+        <img src="images/champion_k76.png" width="100%" alt="K=76 champion polynomial"/>
+      </a>
+      <br/>
+      <sub><b>K = 76 / Q = 152</b><br/>
+      degree 452, M &asymp; 1.28530<br/>
+      striking periodic (1, &minus;1, 0)<br/>
+      coefficient signature</sub>
+    </td>
+  </tr>
+</table>
 
 ## How it works
 
