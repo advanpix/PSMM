@@ -35,10 +35,35 @@ central open problems in number theory.
 
 ## Results
 
-The `AllKnownAdvanpix` file contains **48,341 primitive irreducible reciprocal
-polynomials** with Mahler measure below 1.3, collected by exhaustive search up
-to degree 456. Below are the record-holders in each category — a snapshot of
-what the search has discovered.
+The `AllKnownAdvanpix` database contains **48,341 primitive irreducible
+reciprocal polynomials** with Mahler measure M(P) < 1.3, collected by
+exhaustive search up to degree 456. It is a strict superset of
+Mossinghoff's historical `Known180` list (~8,500 polynomials up to
+degree 180) — **all polynomials of degree > 180 in our database are new
+discoveries made with this search program**.
+
+### Definitions
+
+For a reciprocal polynomial
+$P(x) = a_N x^N + a_{N-1} x^{N-1} + \cdots + a_1 x + a_0$
+with $a_k = a_{N-k}$ (so $a_0 = a_N = 1$):
+
+| Symbol | Definition |
+|---|---|
+| $\deg P = N$ | Polynomial degree (even). |
+| $M(P) = \|a_N\| \cdot \prod_{\|z_i\|>1} \|z_i\|$ | **Mahler measure** — product of $\|a_N\|$ and root magnitudes outside the unit disk. |
+| $\mathrm{NNZ}$ | Number of non-zero coefficients among $a_1, \ldots, a_{N/2}$ (i.e. the **half-coefficients**, excluding the fixed $a_0 = 1$). |
+| $H(P) = \max_k \|a_k\|$ | **Height** — maximum coefficient magnitude (over the full polynomial). |
+| $L(P) = \sum_k \|a_k\|$ | **Length** — sum of coefficient magnitudes (over the full polynomial). |
+| $K$ | Number of roots strictly outside the unit disk ($\|z\| > 1$). |
+| $U$ | Number of roots on the unit circle, counted as conjugate pairs $\\{z, \bar z\\}$. |
+| $Q$ | Number of complex non-unity roots, counted as Salem quadruplets $\\{z, \bar z, 1/z, 1/\bar z\\}$. |
+| $R$ | Number of real non-unity roots, counted as reciprocal pairs $\\{z, 1/z\\}$. |
+
+The root counts satisfy $2K + U + 2(Q + R) = N$.
+
+Storage in `AllKnownAdvanpix` is by half-coefficients $(a_0, a_1, \ldots, a_{N/2})$;
+the full polynomial is recovered by reciprocity $a_k = a_{N-k}$.
 
 ### Lehmer's polynomial — the smallest known Mahler measure
 
@@ -47,28 +72,29 @@ $$P(x) = x^{10} + x^9 - x^7 - x^6 - x^5 - x^4 - x^3 + x + 1$$
 $$M(P) \approx 1.17628081825991750654\ldots$$
 
 Discovered by D. H. Lehmer in 1933 and still the smallest known. Whether any
-smaller value M(P) > 1 exists is **Lehmer's problem** — one of the oldest open
-questions in number theory.
+smaller value $M(P) > 1$ exists is **Lehmer's problem** — one of the oldest
+open questions in number theory.
 
 ### Record holders
 
-| Record | Value | Degree | M(P) | NNZ | H | L | K | U | Q | R |
-|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| Smallest M (Lehmer) | M &asymp; 1.17628 | 10 | — | 4 | 1 | 9 | 1 | 8 | 0 | 2 |
-| Most non-zero coeffs | NNZ = 212 | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
-| Largest height | H = 29 | 348 | 1.25431… | 168 | 29 | 3657 | 40 | 268 | 80 | 0 |
-| Largest length | L = 4173 | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
-| Most roots outside &#124;z&#124;=1 | K = 76 | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
-| Most roots on &#124;z&#124;=1 | U = 396 | 456 | 1.25491… | 3 | 1 | 7 | 30 | 396 | 60 | 0 |
-| Most complex non-unity | Q = 152 | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
-| Most real non-unity | R = 4 | 20 | 1.25363… | 8 | 1 | 17 | 2 | 16 | 0 | 4 |
+| Record | Value | Origin | Degree | M(P) | NNZ | H | L | K | U | Q | R |
+|---|---:|:---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| Smallest M (Lehmer) | M &asymp; 1.17628 | Known180 | 10 | 1.17628… | 4 | 1 | 9 | 1 | 8 | 0 | 2 |
+| Most real non-unity | R = 4 | Known180 | 20 | 1.25363… | 8 | 1 | 17 | 2 | 16 | 0 | 4 |
+| Largest height | H = 29 | **Advanpix** | 348 | 1.25431… | 168 | 29 | 3657 | 40 | 268 | 80 | 0 |
+| Most non-zero coeffs | NNZ = 212 | **Advanpix** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
+| Largest length | L = 4173 | **Advanpix** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
+| Most roots outside &#124;z&#124;=1 | K = 76 | **Advanpix** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
+| Most complex non-unity | Q = 152 | **Advanpix** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
+| Most roots on &#124;z&#124;=1 | U = 396 | **Advanpix** | 456 | 1.25491… | 3 | 1 | 7 | 30 | 396 | 60 | 0 |
 
-NNZ = non-zero half-coefficients · H = height (max &#124;c&#124;) ·
-L = length (sum &#124;c&#124;) · K = roots outside unit disk ·
-U = roots of unity (pairs) · Q = complex non-unity (quadruplets) ·
-R = real non-unity (pairs).
+Six of the eight category records are Advanpix discoveries — they live at
+degrees 348, 432, 452, and 456, well above the 180-degree boundary of the
+prior literature. The two records inside the classical regime
+(Lehmer's M-record at degree 10, and the R-record at degree 20) are
+pre-existing historical entries included for completeness.
 
-### Sparsest extremal polynomial — the Max-U record
+### Sparsest extremal polynomial — the Max-U record (Advanpix)
 
 A degree-456 polynomial with only **three non-zero half-coefficients** packs
 **396 roots onto the unit circle** in conjugate pairs:
@@ -77,14 +103,14 @@ $$P(x) = x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$$
 
 $$M(P) \approx 1.25491475757884793378\ldots, \quad \deg P = 456, \quad U = 396, \quad K = 30, \quad Q = 60$$
 
-The seven nonzero terms hide an extraordinarily rich root structure. This
-kind of sparse construction is reminiscent of Salem-Boyd polynomials and is
-the kind of result that motivates exhaustive sparse-polynomial searches.
+The seven non-zero terms hide an extraordinarily rich root structure. This
+kind of sparse construction is reminiscent of Salem–Boyd polynomials and is
+the type of result that motivates exhaustive sparse-polynomial searches.
 
-### Polynomial with the most real non-unity roots
+### Polynomial with the most real non-unity roots (Known180)
 
 The degree-20 polynomial with the smallest Mahler measure among those with
-**R = 4** real non-unity roots (two reciprocal pairs):
+$R = 4$ real non-unity roots (two reciprocal pairs):
 
 $$P(x) = \sum_{k=17}^{20} x^k \;-\; \sum_{k=6}^{14} x^k \;+\; \sum_{k=0}^{3} x^k$$
 
@@ -94,20 +120,25 @@ Equivalently, with all 21 coefficients written out:
 
 $$P(x) = x^{20} + x^{19} + x^{18} + x^{17} - x^{14} - x^{13} - x^{12} - x^{11} - x^{10} - x^9 - x^8 - x^7 - x^6 + x^3 + x^2 + x + 1$$
 
-### Densest extremal polynomials
+This polynomial is part of the historical `Known180` list (it predates
+the present project), and remains the R-record in the combined database.
 
-The polynomials maximising height (H), length (L), and non-zero count (NNZ)
-all live near degree 350–432 and have hundreds of non-zero coefficients with
-intricate combinatorial structure. Their full coefficient vectors are too
-large to render usefully here — find them in `AllKnownAdvanpix`:
+### Densest extremal polynomials (Advanpix)
 
-- **NNZ = 212 / L = 4173 / H = 23** champion: degree 432, M &asymp; 1.25541, 212
-  non-zero half-coefficients out of 217, height 23, length 4173.
-- **H = 29** champion: degree 348, M &asymp; 1.25431, 168 non-zero
+The polynomials maximising height ($H$), length ($L$), and non-zero count
+($\mathrm{NNZ}$) all live near degree 350–432 and have hundreds of non-zero
+coefficients with intricate combinatorial structure. Their full coefficient
+vectors are too large to render usefully here — find them in
+`AllKnownAdvanpix`:
+
+- **NNZ = 212 / L = 4173 / H = 23** champion: degree 432, $M \approx 1.25541$,
+  212 non-zero half-coefficients out of 217, height 23, length 4173.
+- **H = 29** champion: degree 348, $M \approx 1.25431$, 168 non-zero
   half-coefficients, max single coefficient 29.
-- **K = 76 / Q = 152** champion: degree 452, M &asymp; 1.28530. 151 non-zero
-  half-coefficients with a striking periodic (1, &minus;1, 0) signature that
-  yields 76 roots outside the unit disk and 152 complex roots off the disk.
+- **K = 76 / Q = 152** champion: degree 452, $M \approx 1.28530$. 151 non-zero
+  half-coefficients with a striking periodic $(1, -1, 0)$ signature that
+  yields 76 roots outside the unit disk and 152 complex roots off the
+  disk.
 
 ## How it works
 
