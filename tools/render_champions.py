@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+#
+# This file is part of "Polynomials with Small Mahler Measure" (PSMM).
+# Copyright (C) 2020-2026, Advanpix LLC.
+# License: http://www.gnu.org/licenses/gpl.html GPL version 3 or higher
+#
+# Author: Pavel Holoborodko <pavel@advanpix.com>
+#
 """
 Render the dense champion polynomials from AllKnownAdvanpix as PNG images.
 

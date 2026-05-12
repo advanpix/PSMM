@@ -42,3 +42,4 @@ CMakeUserPresets.json
 .vscode/
 .idea/
 *.swp
+__pycache__/

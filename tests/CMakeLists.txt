@@ -1,4 +1,8 @@
 #
+# This file is part of "Polynomials with Small Mahler Measure" (PSMM).
+# Copyright (C) 2020-2026, Advanpix LLC.
+# License: http://www.gnu.org/licenses/gpl.html GPL version 3 or higher
+#
 # PSMM test suite.
 #
 # Uses doctest (header-only) pulled via FetchContent. Tests compile

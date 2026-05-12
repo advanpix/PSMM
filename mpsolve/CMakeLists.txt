@@ -1,4 +1,10 @@
 #
+# This file is part of "Polynomials with Small Mahler Measure" (PSMM).
+# Copyright (C) 2020-2026, Advanpix LLC.
+# License: http://www.gnu.org/licenses/gpl.html GPL version 3 or higher
+#
+# Author: Pavel Holoborodko <pavel@advanpix.com>
+#
 # Build a patched MPSolve as an ExternalProject and expose it to PSMM
 # as an imported target `mpsolve::mps`.
 #

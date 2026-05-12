@@ -91,6 +91,22 @@ prior literature. The two records inside the classical regime (Lehmer's
 M-record at degree 10, and the R-record at degree 20) are pre-existing
 historical entries included for completeness.
 
+For each record-holder we have run an **independent PARI/GP verification**
+and a structural analysis — see [`doc/champion-analysis.md`](doc/champion-analysis.md)
+for the full report. Highlights:
+
+- All five champions are confirmed irreducible at 200-digit precision.
+- The Max-U champion has an *exact* short-form decomposition as
+  $(x+1)(x^{455}+1) - x^{227}\Phi_3(x)$ — a cyclotomic product perturbed
+  by one sparse $\Phi_3$ term.
+- The parametric generalisation
+  $P_m(x) = (x+1)(x^m+1) - x^{(m-1)/2}\Phi_3(x)$ for odd $m$
+  **rediscovers** the second-smallest known Salem polynomial at $m = 21$
+  (degree 18, $M \approx 1.18837$), confirming the construction connects
+  to the classical Salem-polynomial literature. As $m \to \infty$ the
+  family's Mahler measure approaches $\approx 1.255$, *above* Lehmer's
+  number.
+
 ### Sparsest extremal polynomial — the Max-U record (New)
 
 A degree-456 polynomial with only **three non-zero half-coefficients** packs
@@ -167,20 +183,65 @@ typeset in LaTeX:
 
 ### Search space
 
-A monic reciprocal polynomial of degree N has the form
+A monic reciprocal polynomial of even degree $N$ has the form
 
-    p(x) = x^N + a_1 x^{N-1} + ... + a_{N/2} x^{N/2} + ... + a_1 x + 1
+$$P(x) = x^N + a_1 x^{N-1} + a_2 x^{N-2} + \cdots + a_2 x^2 + a_1 x + 1, \qquad a_k = a_{N-k},$$
 
-so only the N/2 "half-coefficients" a_1, ..., a_{N/2} are free. PSMM
-enumerates all such polynomials with:
+so the polynomial is fully determined by the $N/2$ free **half-coefficients**
+$a_1, a_2, \ldots, a_{N/2}$ (the leading and constant coefficient $a_0 = a_N = 1$
+are fixed). PSMM enumerates all such polynomials with:
 
-- **integer coefficients** drawn from a given alphabet (e.g. {-1, 1}),
-- exactly **nnz** non-zero half-coefficients (sparsity constraint).
+- **integer coefficients** drawn from a user-supplied alphabet
+  $\mathcal{A} = \\{c_0, c_1, \ldots, c_{b-1}\\}$ (e.g. $\\{-1, 1\\}$, $b = 2$);
+- exactly **$k$ non-zero half-coefficients** (sparsity constraint).
 
-The enumeration is driven by `reciprocal_polynomials_iterator`, which
-iterates over all sparsity patterns (via `std::next_permutation`) and all
-coefficient combinations (mixed-radix counter). Polynomials whose roots
-are identical by symmetry (e.g. p(-x) vs p(x)) are skipped automatically.
+#### The bijection that makes everything fast
+
+The two constraints — *which* of the $N/2$ positions are non-zero, and
+*what* values they take — decouple cleanly. Pick the **sparsity pattern**
+(a subset of size $k$ chosen from $\\{1, 2, \ldots, N/2\\}$), then assign
+each chosen position a value from $\mathcal{A}$. The total count is
+
+$$Q(N, k, b) \;=\; \binom{N/2}{k} \cdot b^{k}.$$
+
+The enumeration is implemented as a **bijection** between
+$\\{0, 1, \ldots, Q(N,k,b) - 1\\}$ and the candidate polynomial set:
+
+- The pattern index runs through all $\binom{N/2}{k}$ subsets via
+  `std::next_permutation`.
+- The value-assignment index is a **mixed-radix counter** with base $b$ and
+  $k$ digits — literally `m_Number[k-1] m_Number[k-2] ... m_Number[0]` in
+  the iterator, incremented by add-with-carry.
+
+So the entire search space is, structurally, a single integer counter from
+$0$ to $Q - 1$. Three consequences:
+
+1. **Resumability**: a search can be paused and resumed by recording the
+   counter value.
+2. **Parallelism**: any contiguous interval $[i, j)$ of the counter is an
+   independent sub-search — workers can be handed disjoint intervals with no
+   coordination beyond merging results at the end. PSMM uses this internally
+   (batches of 256 polynomials feed a thread pool, see [`psmm.cpp`](psmm.cpp)),
+   and externally for cluster-scale searches (split the counter by degree or
+   by nnz across machines, then `-merge` the result files).
+3. **Symmetry pruning**: polynomials related by the substitution $x \mapsto -x$
+   (which preserves Mahler measure) are detected from the pattern alone and
+   skipped, halving the effective work for symmetric alphabets like $\\{-1, 1\\}$.
+
+#### Scale considerations
+
+| Degree $N$ | nnz $k$ | $\mathcal{A}$ | $Q(N,k,b)$ |
+|---:|---:|---|---:|
+| 100 | 3 | $\{-1,1\}$ | $\binom{50}{3} \cdot 2^3 \approx 1.6 \times 10^5$ |
+| 200 | 3 | $\{-1,1\}$ | $\binom{100}{3} \cdot 2^3 \approx 1.3 \times 10^6$ |
+| 400 | 3 | $\{-1,1\}$ | $\binom{200}{3} \cdot 2^3 \approx 1.0 \times 10^7$ |
+| 200 | 4 | $\{-1,1\}$ | $\binom{100}{4} \cdot 2^4 \approx 6.3 \times 10^7$ |
+| 200 | 5 | $\{-1,1\}$ | $\binom{100}{5} \cdot 2^5 \approx 2.4 \times 10^9$ |
+| 100 | 5 | $\{-1,0,1\}$ | $\binom{50}{5} \cdot 3^5 \approx 5.1 \times 10^8$ |
+
+Exhaustive search is comfortable at low nnz with a binary alphabet up to
+degree several hundred, but grows quickly with both. Most production runs
+fix $\mathcal{A} = \{-1, 1\}$ and sweep over $k \in \{1, 2, 3, 4\}$.
 
 ### Mahler measure computation
 
@@ -401,6 +462,22 @@ N M NNZ H L K U Q R c_0 c_1 ... c_{N/2}
 - C. J. Smyth, *On the product of the conjugates outside the unit circle of an algebraic integer*, Bull. London Math. Soc. **3** (1971), 169--175.
 - MPSolve: D. A. Bini and G. Fiorentino, *Design, analysis, and implementation of a multiprecision polynomial rootfinder*, Numer. Algorithms **23** (2000), 127--173.
 
-## License
+## License & citation
 
-GPL v3 or later. See [LICENSE](LICENSE).
+This repository is dual-licensed:
+
+- **Source code** (everything under the repository root except the items
+  listed below): [GPL-3.0-or-later](LICENSE). Each source file carries
+  a license header indicating this.
+- **Polynomial database** (`AllKnownAdvanpix`, `Known180`, files under
+  `tests/data/`) and **figures** (`images/*`): [Creative Commons
+  Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+  See [LICENSE-DATA](LICENSE-DATA) for the full terms.
+
+If you use any of these resources in published work, please cite:
+
+> Pavel Holoborodko, *PSMM: Polynomials with Small Mahler Measure*,
+> Advanpix LLC, 2020–2026. <https://github.com/advanpix/PSMM>
+
+A machine-readable citation entry is provided in [`CITATION.cff`](CITATION.cff)
+(GitHub's "Cite this repository" widget reads this file).

@@ -1,0 +1,37 @@
+cff-version: 1.2.0
+title: "PSMM: Polynomials with Small Mahler Measure"
+message: >-
+  If you use this software, the AllKnownAdvanpix polynomial
+  database, or any of the figures in published work, please
+  cite the entry below.
+type: software
+authors:
+  - family-names: Holoborodko
+    given-names: Pavel
+    affiliation: Advanpix LLC
+    email: pavel@advanpix.com
+repository-code: "https://github.com/advanpix/PSMM"
+url: "https://github.com/advanpix/PSMM"
+abstract: >-
+  PSMM (Polynomials with Small Mahler Measure) is an
+  exhaustive computational search for primitive, irreducible,
+  reciprocal integer polynomials with Mahler measure below a
+  given threshold (typically 1.3). The repository contains the
+  C++ search engine (using NTL, GMP, and a patched MPSolve for
+  arbitrary-precision root finding), the AllKnownAdvanpix
+  database of 48,341 such polynomials of degree up to 456 — a
+  strict superset of Mossinghoff's historical Known180 list —
+  and a PARI/GP-based structural analysis of the record-holder
+  polynomials.
+keywords:
+  - Mahler measure
+  - Lehmer's problem
+  - Salem numbers
+  - Pisot numbers
+  - reciprocal polynomials
+  - sparse polynomials
+  - cyclotomic polynomials
+  - computational number theory
+  - polynomial root finding
+license: GPL-3.0-or-later
+date-released: "2020-10-29"
