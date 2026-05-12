@@ -35,7 +35,7 @@ which writes this file.
   ```
 - **Root counts**: K = 1, U = 8, Q = 0, R = 2
   (verification of identities: 2K + U = 10, Q + R = 2 vs 2K = 2)
-- **Max off-circle distance** $\max_i\,||z_i| - 1|$ over off-circle roots:
+- **Max off-circle distance** $\max_i ||z_i| - 1|$ over off-circle roots:
   ```
   0.17628081825991750654407033847403505069341580656469525983010634702968837654854996209683011558181539465920718137934768176562714299390469080189480252316007759657054606241887504896232590717733457156754810
   ```
@@ -62,7 +62,7 @@ which writes this file.
   ```
 - **Root counts**: K = 30, U = 396, Q = 60, R = 0
   (verification of identities: 2K + U = 456, Q + R = 60 vs 2K = 60)
-- **Max off-circle distance** $\max_i\,||z_i| - 1|$ over off-circle roots:
+- **Max off-circle distance** $\max_i ||z_i| - 1|$ over off-circle roots:
   ```
   0.017242615527866129061172866032279787374734306318923809424222908408845204414895272865589805628828035751615209548758865972367815065833052368318494172994888154191958111667389837997228673522458064928479112
   ```
@@ -100,7 +100,7 @@ P − S = -x^229 - x^228 - x^227
   ```
 - **Root counts**: K = 76, U = 300, Q = 152, R = 0
   (verification of identities: 2K + U = 452, Q + R = 152 vs 2K = 152)
-- **Max off-circle distance** $\max_i\,||z_i| - 1|$ over off-circle roots:
+- **Max off-circle distance** $\max_i ||z_i| - 1|$ over off-circle roots:
   ```
   0.0042876409383880665726467341272801656102632481673550544359712176062347328109333577271057383498760767545905723819463217650981072122461840843364766568220045409487112639381218966410829098254810848149458366
   ```
@@ -127,7 +127,7 @@ P − S = -x^229 - x^228 - x^227
   ```
 - **Root counts**: K = 42, U = 348, Q = 84, R = 0
   (verification of identities: 2K + U = 432, Q + R = 84 vs 2K = 84)
-- **Max off-circle distance** $\max_i\,||z_i| - 1|$ over off-circle roots:
+- **Max off-circle distance** $\max_i ||z_i| - 1|$ over off-circle roots:
   ```
   0.0071381284175354531692531982111381371725190698830525032377950211761320762589569178012973884981696883271541492961451723318767862964265339779497759441025092410177256592996037577840279924831190176016522507
   ```
@@ -154,7 +154,7 @@ P − S = -x^229 - x^228 - x^227
   ```
 - **Root counts**: K = 40, U = 268, Q = 80, R = 0
   (verification of identities: 2K + U = 348, Q + R = 80 vs 2K = 80)
-- **Max off-circle distance** $\max_i\,||z_i| - 1|$ over off-circle roots:
+- **Max off-circle distance** $\max_i ||z_i| - 1|$ over off-circle roots:
   ```
   0.0071372486143530633470742407548346569579114577983204348607628153652042286400370236504680997842109212763487558333298678010441701629061677919693947518991195502688055139660392993193110496005368512554995873
   ```
@@ -176,9 +176,9 @@ P − S = -x^229 - x^228 - x^227
 
 - The **Max-U champion** has an *exact* short-form decomposition
   as a cyclotomic product perturbed by a single sparse term:
-  $$P(x) = (x+1)(x^{455}+1) \;-\; x^{227}\,\Phi_3(x).$$
+  $$P(x) = (x+1)(x^{455}+1) - x^{227} \Phi_3(x).$$
   The first factor is the product of cyclotomic polynomials
-  $\Phi_2(x)\cdot \prod_{d\mid 910,\,d\nmid 455} \Phi_d(x)$,
+  $\Phi_2(x) \cdot \prod_{d \mid 910, d \nmid 455} \Phi_d(x)$,
   contributing all-on-circle roots; the $\Phi_3$ perturbation,
   placed at $x^{(m-1)/2}$ with $m = 455$, is what generates the
   60 off-circle roots in 15 Salem quadruplets.
@@ -201,7 +201,7 @@ P − S = -x^229 - x^228 - x^227
 The exact decomposition of the Max-U champion suggests a
 **parametric family** indexed by odd $m$:
 
-$$P_m(x) \;=\; (x+1)(x^m+1) \;-\; x^{(m-1)/2}\,\Phi_3(x),
+$$P_m(x) = (x+1)(x^m+1) - x^{(m-1)/2} \Phi_3(x),
 \qquad \deg P_m = m + 1.$$
 
 We computed $M(P_m)$ for every odd $m$ in $[5, 199]$ and factored
@@ -241,24 +241,24 @@ The convergence is **not coincidental**. The parametric family
 $P_m(x)$ is a univariate monomial substitution into the bivariate
 polynomial
 
-$$F(x, u) \;=\; x(x+1)\,u^2 \;-\; \Phi_3(x)\,u \;+\; (x+1),$$
+$$F(x, u) = x(x+1) u^2 - \Phi_3(x) u + (x+1),$$
 
 obtained by setting $u = x^{(m-1)/2}$ so that $x^m = x\cdot u^2$.
 By the **Boyd–Lawton theorem** (Boyd 1981, Lawton 1983), the
 Mahler measure of the univariate family converges to the
 (logarithmic) Mahler measure of the bivariate polynomial:
 
-$$\lim_{m \to \infty} M(P_m) \;=\; \exp\bigl(m(F)\bigr),
+$$\lim_{m \to \infty} M(P_m) = \exp\bigl(m(F)\bigr),
 \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi}
-\log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr|\,d\theta_1 d\theta_2.$$
+\log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr| d\theta_1 d\theta_2.$$
 
 Since $F$ is quadratic in $u$, the inner integral evaluates via
 Jensen's formula and one is left with a single integral over the
 circle. Numerical evaluation in PARI gives
 
-$$\log m(F) \;\approx\; 0.22263013\,21395060\,2590821731\ldots,$$
+$$\log m(F) \approx 0.222630132139506025908217312245576858\ldots,$$
 
-$$\boxed{\;\lim_{m\to\infty} M(P_m) \;\approx\; 1.24935839\,07529593\,6286\ldots\;}$$
+$$\boxed{\lim_{m\to\infty} M(P_m) \approx 1.249358390752959362866\ldots}$$
 
 This is **above Lehmer's number** (1.17628…). The Boyd–Lawton
 limit is therefore a *barrier* for this particular family: no

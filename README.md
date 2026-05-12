@@ -60,8 +60,8 @@ with $a_k = a_{N-k}$ (so $a_0 = a_N = 1$):
 | $L(P) = \sum_k \|a_k\|$ | **Length** — sum of coefficient magnitudes (over the full polynomial). |
 | $K$ | Count of (individual) roots strictly outside the unit disk ($\|z\| > 1$). |
 | $U$ | Count of roots on the unit circle. They come in complex-conjugate pairs $\\{z, \bar z\\}$, so $U$ is even. |
-| $Q$ | Count of complex non-unity roots ($\|z\| \neq 1$, $\mathrm{Im}\,z \neq 0$). They come in Salem quadruplets $\\{z, \bar z, 1/z, 1/\bar z\\}$, so $Q$ is a multiple of 4. |
-| $R$ | Count of real non-unity roots ($\mathrm{Im}\,z = 0$, $\|z\| \neq 1$). They come in reciprocal pairs $\\{z, 1/z\\}$, so $R$ is even. |
+| $Q$ | Count of complex non-unity roots ($\|z\| \neq 1$, $\mathrm{Im}(z) \neq 0$). They come in Salem quadruplets $\\{z, \bar z, 1/z, 1/\bar z\\}$, so $Q$ is a multiple of 4. |
+| $R$ | Count of real non-unity roots ($\mathrm{Im}(z) = 0$, $\|z\| \neq 1$). They come in reciprocal pairs $\\{z, 1/z\\}$, so $R$ is even. |
 
 For a reciprocal polynomial the roots satisfy $z \leftrightarrow 1/z$, so the
 number of roots inside the unit disk equals the number outside.
@@ -111,7 +111,7 @@ $$M(P) \approx 1.25491475757884793378\ldots, \quad \deg P = 456, \quad U = 396, 
 **Exact structural decomposition.** This polynomial is **the cyclotomic
 product $(x+1)(x^{455}+1)$ perturbed by a single sparse $\Phi_3$ term:**
 
-$$P(x) \;=\; (x+1)\,(x^{455} + 1) \;-\; x^{227}\,\Phi_3(x), \qquad \Phi_3(x) = x^2 + x + 1.$$
+$$P(x) = (x+1)(x^{455} + 1) - x^{227} \Phi_3(x), \qquad \Phi_3(x) = x^2 + x + 1.$$
 
 The first factor is a product of cyclotomic polynomials — all 456 of its
 roots sit on the unit circle. The single perturbation term $-x^{227}\Phi_3(x)$,
@@ -120,7 +120,7 @@ into 15 Salem quadruplets (each at distance $\sim 0.008$ from $|z|=1$),
 producing the irreducible polynomial above. **Generalising the construction
 to odd $m$,**
 
-$$P_m(x) \;=\; (x+1)(x^m + 1) \;-\; x^{(m-1)/2}\,\Phi_3(x),$$
+$$P_m(x) = (x+1)(x^m + 1) - x^{(m-1)/2} \Phi_3(x),$$
 
 rediscovers, after factoring out cyclotomic content, the second-smallest
 known Salem polynomial at $m = 21$
@@ -135,7 +135,7 @@ analysis.
 The degree-20 polynomial with the smallest Mahler measure among those with
 $R = 4$ real non-unity roots (two reciprocal pairs):
 
-$$P(x) = \sum_{k=17}^{20} x^k \;-\; \sum_{k=6}^{14} x^k \;+\; \sum_{k=0}^{3} x^k$$
+$$P(x) = \sum_{k=17}^{20} x^k - \sum_{k=6}^{14} x^k + \sum_{k=0}^{3} x^k$$
 
 $$M(P) \approx 1.25363556570886317997\ldots, \quad \deg P = 20, \quad K = 2, \quad U = 16, \quad R = 4$$
 
@@ -212,7 +212,7 @@ The two constraints — *which* of the $N/2$ positions are non-zero, and
 (a subset of size $k$ chosen from $\\{1, 2, \ldots, N/2\\}$), then assign
 each chosen position a value from $\mathcal{A}$. The total count is
 
-$$Q(N, k, b) \;=\; \binom{N/2}{k} \cdot b^{k}.$$
+$$Q(N, k, b) = \binom{N/2}{k} \cdot b^{k}.$$
 
 The enumeration is implemented as a **bijection** between
 $\\{0, 1, \ldots, Q(N,k,b) - 1\\}$ and the candidate polynomial set:
