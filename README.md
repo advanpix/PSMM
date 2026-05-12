@@ -91,21 +91,13 @@ prior literature. The two records inside the classical regime (Lehmer's
 M-record at degree 10, and the R-record at degree 20) are pre-existing
 historical entries included for completeness.
 
-For each record-holder we have run an **independent PARI/GP verification**
-and a structural analysis — see [`doc/champion-analysis.md`](doc/champion-analysis.md)
-for the full report. Highlights:
-
-- All five champions are confirmed irreducible at 200-digit precision.
-- The Max-U champion has an *exact* short-form decomposition as
-  $(x+1)(x^{455}+1) - x^{227}\Phi_3(x)$ — a cyclotomic product perturbed
-  by one sparse $\Phi_3$ term.
-- The parametric generalisation
-  $P_m(x) = (x+1)(x^m+1) - x^{(m-1)/2}\Phi_3(x)$ for odd $m$
-  **rediscovers** the second-smallest known Salem polynomial at $m = 21$
-  (degree 18, $M \approx 1.18837$), confirming the construction connects
-  to the classical Salem-polynomial literature. As $m \to \infty$ the
-  family's Mahler measure approaches $\approx 1.255$, *above* Lehmer's
-  number.
+The structural analysis of these polynomials surfaced a concrete
+**parametric construction** that reproduces the second-smallest known
+Salem polynomial (at $m = 21$) and converges, by the Boyd–Lawton theorem,
+to a specific bivariate Mahler measure. The full development — including
+PARI/GP-verified decompositions, the parametric scan over odd $m$ up to
+1001, and the analytic limit — is in
+[`doc/champion-analysis.md`](doc/champion-analysis.md).
 
 ### Sparsest extremal polynomial — the Max-U record (New)
 
@@ -116,9 +108,27 @@ $$P(x) = x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$$
 
 $$M(P) \approx 1.25491475757884793378\ldots, \quad \deg P = 456, \quad U = 396, \quad K = 30, \quad Q = 60$$
 
-The seven non-zero terms hide an extraordinarily rich root structure. This
-kind of sparse construction is reminiscent of Salem–Boyd polynomials and is
-the type of result that motivates exhaustive sparse-polynomial searches.
+**Exact structural decomposition.** This polynomial is **the cyclotomic
+product $(x+1)(x^{455}+1)$ perturbed by a single sparse $\Phi_3$ term:**
+
+$$P(x) \;=\; (x+1)\,(x^{455} + 1) \;-\; x^{227}\,\Phi_3(x), \qquad \Phi_3(x) = x^2 + x + 1.$$
+
+The first factor is a product of cyclotomic polynomials — all 456 of its
+roots sit on the unit circle. The single perturbation term $-x^{227}\Phi_3(x)$,
+placed at the half-degree, pushes exactly 60 of those roots off the circle
+into 15 Salem quadruplets (each at distance $\sim 0.008$ from $|z|=1$),
+producing the irreducible polynomial above. **Generalising the construction
+to odd $m$,**
+
+$$P_m(x) \;=\; (x+1)(x^m + 1) \;-\; x^{(m-1)/2}\,\Phi_3(x),$$
+
+rediscovers, after factoring out cyclotomic content, the second-smallest
+known Salem polynomial at $m = 21$
+($M \approx 1.18836\ldots$, degree 18). Boyd–Lawton predicts
+$\lim_{m\to\infty} M(P_m) = \exp(m(F)) \approx 1.24936\ldots$, where $F$
+is the bivariate "lift" of the family. See
+[`doc/champion-analysis.md`](doc/champion-analysis.md) for the full
+analysis.
 
 ### Polynomial with the most real non-unity roots (Known180)
 

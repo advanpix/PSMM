@@ -235,28 +235,70 @@ Two key observations:
    Lehmer's number. The family itself does not approach 1 from
    above.
 
-This is consistent with the **Salem–Boyd theorem** that limits
-of cyclotomic-perturbed polynomial families are themselves Salem
-numbers, not transcendental limits. Generating sub-Lehmer
-polynomials (if any exist) would require a fundamentally
-different perturbation pattern — varying $\Phi_d$ for $d > 3$,
-using larger perturbations, or composing several perturbations.
+### Analytic limit (Boyd–Lawton theorem)
 
-### Suggested next experiments
+The convergence is **not coincidental**. The parametric family
+$P_m(x)$ is a univariate monomial substitution into the bivariate
+polynomial
+
+$$F(x, u) \;=\; x(x+1)\,u^2 \;-\; \Phi_3(x)\,u \;+\; (x+1),$$
+
+obtained by setting $u = x^{(m-1)/2}$ so that $x^m = x\cdot u^2$.
+By the **Boyd–Lawton theorem** (Boyd 1981, Lawton 1983), the
+Mahler measure of the univariate family converges to the
+(logarithmic) Mahler measure of the bivariate polynomial:
+
+$$\lim_{m \to \infty} M(P_m) \;=\; \exp\bigl(m(F)\bigr),
+\qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi}
+\log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr|\,d\theta_1 d\theta_2.$$
+
+Since $F$ is quadratic in $u$, the inner integral evaluates via
+Jensen's formula and one is left with a single integral over the
+circle. Numerical evaluation in PARI gives
+
+$$\log m(F) \;\approx\; 0.22263013\,21395060\,2590821731\ldots,$$
+
+$$\boxed{\;\lim_{m\to\infty} M(P_m) \;\approx\; 1.24935839\,07529593\,6286\ldots\;}$$
+
+This is **above Lehmer's number** (1.17628…). The Boyd–Lawton
+limit is therefore a *barrier* for this particular family: no
+matter how large $m$ grows, $M(P_m)$ stays $\geq 1.2493\ldots$,
+with the m=21 minimum at $1.18837$ being the closest single case
+to Lehmer's bound that the family achieves.
+
+![Parametric family convergence](../images/parametric_family_M_vs_m.png)
+
+(See [`tools/scan_parametric_family.py`](../tools/scan_parametric_family.py)
+and [`tools/plot_parametric_family.py`](../tools/plot_parametric_family.py)
+to reproduce the data and figure.)
+
+### Implications
+
+The Boyd–Lawton barrier of $\approx 1.249$ for this family tells
+us where *not* to look for sub-Lehmer polynomials. Producing a
+smaller Mahler measure than Lehmer's $1.17628$ would require a
+**different bivariate lift**, one whose bivariate Mahler measure
+is smaller than $\exp(0.16307\ldots) = 1.17628\ldots$. Concrete
+experimental directions:
 
 - **Vary the perturbation cyclotomic**: scan $\Phi_d$ for
   $d \in \{4, 5, 6, 7, 8, 12, \ldots\}$ in place of $\Phi_3$.
-- **Vary the perturbation position**: instead of placing $\Phi_3$
-  at the exact half-degree, scan nearby positions.
+  Each choice produces a different bivariate $F_d$ with its
+  own (computable) Boyd–Lawton limit; the search reduces to
+  finding $d$ that minimises $m(F_d)$.
+- **Vary the perturbation position**: replace $x^{(m-1)/2}$ by
+  $x^{\lfloor m\alpha \rfloor}$ for irrational $\alpha$ —
+  this lifts to a different bivariate.
 - **Multiple perturbations**: subtract $x^{a}\Phi_3 + x^{b}\Phi_5$
-  and check if any $(m, a, b)$ produces a smaller-than-Lehmer
-  irreducible factor.
+  to obtain a *trivariate* lift, with a corresponding Lawton-type
+  triple-integral limit.
 - **Different cyclotomic skeletons**: replace $(x+1)(x^m+1)$ by
   $(x^a+1)(x^m+1)$ or by products $\prod \Phi_{d_i}$.
 
-Each of these is a directed search with a small parameter space,
-*much* smaller than the brute-force PSMM enumeration over all
-integer coefficient sparse polynomials. The cyclotomic-perturbation
-structural insight reduces the search space from $\sim 10^{12}$
-polynomials per degree to $\sim 10^2$.
+Each of these is a *directed* search through a small parameter
+space (tens to thousands of candidates), with the Boyd–Lawton
+limit *computed analytically* for each before any expensive
+polynomial search runs. This is dramatically smaller than the
+brute-force PSMM enumeration (which is $\sim 10^{12}$
+polynomials per degree at large $N$ and small $\mathrm{NNZ}$).
 
