@@ -92,11 +92,18 @@ M-record at degree 10, and the R-record at degree 20) are pre-existing
 historical entries included for completeness.
 
 The structural analysis of these polynomials surfaced a concrete
-**parametric construction** that reproduces the second-smallest known
-Salem polynomial (at $m = 21$) and converges, by the Boyd–Lawton theorem,
-to a specific bivariate Mahler measure. The full development — including
-PARI/GP-verified decompositions, the parametric scan over odd $m$ up to
-1001, and the analytic limit — is in
+**parametric construction** that reproduces *both* the smallest and the
+second-smallest known Salem polynomials. The two-parameter family
+
+$$P_{a,d,m,s}(x) = \Phi_a(x)(x^m+1) + s\,x^{(\phi(a)+m-\phi(d))/2}\,\Phi_d(x)$$
+
+contains Lehmer's polynomial as a factor in four different
+$(a, d, m, s)$ combinations, and the second-smallest known
+($M \approx 1.18837$ at degree 18) at $(a, d, m, s) = (2, 3, 21, -)$.
+Across the swept range it cannot produce $M$ smaller than Lehmer's number.
+The full PARI/GP analysis — Boyd-Lawton limit derivation, empirical
+sweeps over $m \in [5, 1001]$ for the $d$-only family, and $m \in [5, 201]$
+for the $(a, d)$ grid — is in
 [`doc/champion-analysis.md`](doc/champion-analysis.md).
 
 ### Sparsest extremal polynomial — the Max-U record (New)

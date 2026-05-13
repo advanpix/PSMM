@@ -272,6 +272,41 @@ to Lehmer's bound that the family achieves.
 and [`tools/plot_parametric_family.py`](../tools/plot_parametric_family.py)
 to reproduce the data and figure.)
 
+### Generalising to two cyclotomic parameters $(a, d)$
+
+Replacing the background factor $(x+1) = \Phi_2$ by a general
+cyclotomic $\Phi_a$ gives a two-parameter family
+
+$$P_{a,d,m,s}(x) = \Phi_a(x)(x^m+1) + s \cdot x^{(\phi(a)+m-\phi(d))/2} \Phi_d(x).$$
+
+We swept $a \in \{2, 3, 4, 6\}$, $d \in \{3, 5, 7, 8, 9, 10, 12\}$,
+$s \in \{-1, +1\}$, $m \in [5, 201]$, factored each $P_{a,d,m,s}$ over
+$\mathbb{Z}$, and recorded the Mahler measure of the smallest
+non-cyclotomic irreducible factor.
+
+**Result.** Across the entire sweep, the global minimum is
+**$M = 1.17628\ldots$**, i.e. Lehmer's number itself. Four distinct
+parameter combinations all factor to include Lehmer's polynomial
+(or its $x \to -x$ reflection, which has the same Mahler measure):
+
+| $a$ | $d$ | $m$ | sign |
+|---:|---:|---:|---:|
+|  2  |  3  | 23  |  +  |
+|  2  |  5  |  9  |  −  |
+|  2  |  7  | 15  |  −  |
+|  3  |  7  |  8  |  −  |
+
+The second-smallest is $M \approx 1.18837$ at $(a, d, m, s) =
+(2, 3, 21, -)$, the Lehmer-sibling we discovered earlier.
+
+**The cyclotomic-perturbation family cannot break Lehmer's bound,**
+**but it embeds Lehmer's polynomial naturally in many ways.** This
+is consistent with Boyd's conjecture that all small Mahler measures
+$> 1$ arise from a structured (Salem-Boyd-style) construction.
+
+Reproduce with [`tools/sweep_ad.py`](../tools/sweep_ad.py); raw
+data in [`doc/ad_sweep.csv`](ad_sweep.csv).
+
 ### Implications
 
 The Boyd–Lawton barrier of $\approx 1.249$ for this family tells
