@@ -168,6 +168,38 @@ P − S = -x^229 - x^228 - x^227
 
 ---
 
+## Database-wide verification
+
+Every one of the **48,341** polynomials in `AllKnownAdvanpix` was
+re-verified independently with PARI/GP at 60-digit precision
+(via [`tools/bulk_verify.py`](../tools/bulk_verify.py); results in
+[`doc/database-verification.csv`](database-verification.csv)).
+Findings:
+
+- **Mahler measure**: agrees with the stored 72-digit value to
+  the precision tested in every single entry.
+- **Irreducibility**: confirmed for every entry.
+- **Root counts** $K, U, Q, R$: **4 mismatches** were found, each
+  off-by-one or off-by-two due to PSMM's eps threshold being too
+  tight when classifying a root close to the unit circle:
+
+  | DB line | $N$ | $K$ (PSMM → PARI) | $U$ (PSMM → PARI) | $Q$ (PSMM → PARI) | $\max\,\|\|z\|-1\|$ |
+  |---:|---:|---:|---:|---:|---|
+  | 31272 | 360 | 61 → 60 | 239 → 240 | 121 → 120 | 0.00540 |
+  | 31875 | 364 | 53 → 52 | 259 → 260 | 105 → 104 | 0.00621 |
+  | 41843 | 420 | 56 → 56 | 307 → 308 | 113 → 112 | 0.00577 |
+  | 45319 | 438 | 51 → 49 | 337 → 340 |  99 →  96 | 0.00608 |
+
+  In all four cases the PSMM values violated the identity
+  $2K + U = N$; the corrected PARI values are self-consistent.
+  The Mahler measure and the polynomial coefficients themselves
+  are correct in every case — only the bookkeeping of how many
+  roots sit on vs. off the unit circle was off by 1 or 2 at the
+  boundary.
+
+  These 4 entries have been patched in `AllKnownAdvanpix` by
+  [`tools/patch_db_mismatches.py`](../tools/patch_db_mismatches.py).
+
 ## Synthesis
 
 - Across all five record-holders we verify that PSMM's NTL-based
