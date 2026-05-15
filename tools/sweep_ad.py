@@ -35,6 +35,27 @@ from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parent.parent
+DB_PATH = REPO / "AllKnownAdvanpix"
+
+
+def load_db_keys(path: Path) -> dict:
+    """Map (degree, Mahler-prefix-13-digits) -> polynomial line."""
+    keys = {}
+    with path.open() as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            toks = line.split()
+            if len(toks) < 2:
+                continue
+            try:
+                deg = int(toks[0])
+            except ValueError:
+                continue
+            M_prefix = toks[1][:15]  # 13 fractional digits + "1."
+            keys[(deg, M_prefix)] = line
+    return keys
 
 
 CYCLOTOMICS = {
@@ -90,13 +111,22 @@ def main():
            for pair in args.ads.split(";")]
     signs = [int(s) for s in args.signs.split(",")]
 
+    if DB_PATH.exists():
+        print(f"loading {DB_PATH} ...", file=sys.stderr)
+        db_keys = load_db_keys(DB_PATH)
+        print(f"  {len(db_keys)} entries indexed by (degree, M-prefix)",
+              file=sys.stderr)
+    else:
+        db_keys = {}
+
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     with out_path.open("w", buffering=1) as out:
         w = csv.writer(out)
         w.writerow(["a", "d", "sign", "m", "deg_P", "n_factors",
-                    "M_P", "deg_smallest_factor", "M_smallest_factor"])
+                    "M_P", "deg_smallest_factor", "M_smallest_factor",
+                    "in_db"])
         best_overall = (None, 100.0)
         for (a, d) in ads:
             pa = CYCLOTOMICS[a][1]
@@ -126,7 +156,13 @@ def main():
                     if not lines:
                         continue
                     row = [c.strip() for c in lines[-1].split(",")]
-                    w.writerow(row)
+                    try:
+                        deg_F = int(row[7])
+                        M_F = row[8]
+                        in_db = (deg_F, M_F[:15]) in db_keys
+                    except (ValueError, IndexError):
+                        in_db = False
+                    w.writerow(row + [str(in_db)])
                     try:
                         m_sf = float(row[8])
                     except (ValueError, IndexError):
