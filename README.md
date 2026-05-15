@@ -46,6 +46,7 @@ one of the oldest open questions in number theory.
 - [Generalising the Max-U construction](#generalising-the-max-u-construction)
 - [Generalising to two cyclotomic parameters](#generalising-to-two-cyclotomic-parameters)
 - [Densest extremal polynomials](#densest-extremal-polynomials)
+- [Closest Mahler-measure pair](#closest-mahler-measure-pair)
 - [Database-wide verification](#database-wide-verification)
 
 **Practical guide**
@@ -273,8 +274,8 @@ the **smallest amount** are:
 
 | Degree | $P(x)$ | $M(P)$ |
 |---:|---|---|
-| 378 | $x^{378} - x^{337} - x^{189} - x^{41} + 1$ | $1.286155162556\mathbf{2}19358714851308069\ldots$ |
-| 358 | $x^{358} + x^{297} - x^{179} + x^{61} + 1$ | $1.286155162556\mathbf{9}91265787643695188\ldots$ |
+| 378 | $x^{378} - x^{337} - x^{189} - x^{41} + 1$ | $\mathbf{1.286155162556}219358714851308069\ldots$ |
+| 358 | $x^{358} + x^{297} - x^{179} + x^{61} + 1$ | $\mathbf{1.286155162556}991265787643695188\ldots$ |
 
 $$|M_1 - M_2| \approx 7.72 \times 10^{-13}.$$
 
