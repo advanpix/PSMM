@@ -42,10 +42,10 @@ one of the oldest open questions in number theory.
 
 - [Definitions](#definitions)
 - [Record holders](#record-holders)
-- [Sparsest extremal polynomial — the Max-U record (New)](#sparsest-extremal-polynomial--the-max-u-record-new)
+- [Sparsest extremal polynomial — the Max-U record](#sparsest-extremal-polynomial--the-max-u-record)
 - [Generalising the Max-U construction](#generalising-the-max-u-construction)
 - [Generalising to two cyclotomic parameters](#generalising-to-two-cyclotomic-parameters)
-- [Densest extremal polynomials (New)](#densest-extremal-polynomials-new)
+- [Densest extremal polynomials](#densest-extremal-polynomials)
 - [Database-wide verification](#database-wide-verification)
 
 **Practical guide**
@@ -112,7 +112,7 @@ prior literature. The two records inside the classical regime (Lehmer's
 M-record at degree 10, and the R-record at degree 20) are pre-existing
 historical entries included for completeness.
 
-### Sparsest extremal polynomial — the Max-U record (New)
+### Sparsest extremal polynomial — the Max-U record
 
 A degree-456 polynomial with only **three non-zero half-coefficients** packs
 **396 roots onto the unit circle** in conjugate pairs:
@@ -154,27 +154,6 @@ factors as $\Phi_{12}(x) \cdot R_{18}(x)$** where $R_{18}$ is the
 irreducible degree-18 polynomial with $M(R_{18}) \approx 1.18836814751\ldots$
 — **the second-smallest known Salem polynomial** (just above Lehmer's
 1.17628). This is exactly the entry `18 1.188368…` in `AllKnownAdvanpix`.
-
-Selected values of $M$ (smallest non-cyclotomic factor of $P_m$):
-
-| $m$ | $\deg$ of smallest non-cyc factor | $M$ |
-|---:|---:|---|
-| 11  | 12  | 1.25104661720… |
-| 17  | 18  | 1.21972085904… |
-| **21**  | **18**  | **1.18836814751… (Lehmer's sibling — 2nd smallest known)** |
-| 35  | 36  | 1.22649330147… |
-| 53  | 46  | 1.23074300908… |
-| 67  | 60  | 1.24006185904… |
-| 95  | 96  | 1.24866635341… |
-| 455 | 456 | 1.25491475758… (the Max-U champion itself) |
-
-Two observations:
-
-1. The family **reproduces** known Salem polynomials at small degrees —
-   $m = 21$ gives the second-smallest known Salem polynomial as an
-   irreducible factor.
-2. As $m \to \infty$ the Mahler measure of $P_m$ converges to $\approx 1.255$,
-   *above* Lehmer's number.
 
 #### Analytic limit (Boyd–Lawton theorem)
 
@@ -242,7 +221,7 @@ structured (Salem–Boyd-style) construction.
 Reproduce with [`tools/sweep_ad.py`](tools/sweep_ad.py); raw data in
 [`doc/ad_sweep.csv`](doc/ad_sweep.csv).
 
-### Densest extremal polynomials (New)
+### Densest extremal polynomials
 
 The polynomials maximising height ($H$), length ($L$), non-zero count
 ($\mathrm{NNZ}$), and root count outside the unit disk ($K$) all live near
