@@ -146,7 +146,7 @@ section below for the full derivation.
 The exact decomposition of the Max-U champion suggests a **parametric
 family** indexed by odd $m$:
 
-$$P_m(x) = (x+1)(x^m+1) - x^{(m-1)/2}\,\Phi_3(x), \qquad \deg P_m = m + 1.$$
+$$P_m(x) = (x+1)(x^m+1) - x^{(m-1)/2}\Phi_3(x), \qquad \deg P_m = m + 1.$$
 
 We computed $M(P_m)$ for every odd $m \in [5, 1001]$ and factored each
 $P_m$ over $\mathbb{Z}[x]$. The most striking finding: **$P_{21}(x)$
@@ -167,7 +167,7 @@ obtained by setting $u = x^{(m-1)/2}$ so that $x^m = x \cdot u^2$. By the
 the univariate family converges to the (logarithmic) Mahler measure of the
 bivariate polynomial:
 
-$$\lim_{m \to \infty} M(P_m) = \exp\bigl(m(F)\bigr), \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi} \log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr|\,d\theta_1 d\theta_2.$$
+$$\lim_{m \to \infty} M(P_m) = \exp\bigl(m(F)\bigr), \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi} \log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr| d\theta_1 d\theta_2.$$
 
 Numerical evaluation gives
 
@@ -191,7 +191,7 @@ and [`tools/plot_parametric_family.py`](tools/plot_parametric_family.py).)
 Replacing the background factor $(x+1) = \Phi_2$ by a general cyclotomic
 $\Phi_a$ gives a two-parameter family:
 
-$$P_{a,d,m,s}(x) = \Phi_a(x)(x^m+1) + s \cdot x^{(\phi(a)+m-\phi(d))/2}\,\Phi_d(x).$$
+$$P_{a,d,m,s}(x) = \Phi_a(x)(x^m+1) + s \cdot x^{(\phi(a)+m-\phi(d))/2}\Phi_d(x).$$
 
 We swept $a \in \{2, 3, 4, 6\}$, $d \in \{3, 5, 7, 8, 9, 10, 12\}$,
 $s \in \{-1, +1\}$, $m \in [5, 201]$ — factored each $P_{a,d,m,s}$ over
@@ -263,6 +263,32 @@ typeset in LaTeX:
     </td>
   </tr>
 </table>
+
+### Closest Mahler-measure pair
+
+A natural question for any large set of algebraic numbers is *how close
+together can two of them be?* Scanning all 48,341 entries in
+`AllKnownAdvanpix`, the two polynomials whose Mahler measures differ by
+the **smallest amount** are:
+
+| Degree | $P(x)$ | $M(P)$ |
+|---:|---|---|
+| 378 | $x^{378} - x^{337} - x^{189} - x^{41} + 1$ | $1.286155162556\mathbf{2}19358714851308069\ldots$ |
+| 358 | $x^{358} + x^{297} - x^{179} + x^{61} + 1$ | $1.286155162556\mathbf{9}91265787643695188\ldots$ |
+
+$$|M_1 - M_2| \approx 7.72 \times 10^{-13}.$$
+
+The two Mahler measures agree to **12 decimal places**, then diverge. The
+two polynomials themselves are structurally unrelated: they sit at
+different degrees, have different coefficient supports, and live in the
+upper end of the database's $M < 1.3$ coverage (well above Lehmer's number).
+Both happen to be among the sparsest five-term reciprocals in the database
+($\mathrm{NNZ} = 2$, $L = 5$), with the perturbations placed at the
+half-degree and at one off-centre position — but the off-centre placements
+differ ($41$ vs $61$) and so do the signs.
+
+Reproduce with `./build/psmm -analyze=AllKnownAdvanpix` (look for the line
+"Polynomials with nearest Mahler measures").
 
 ### Database-wide verification
 
