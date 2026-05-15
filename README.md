@@ -36,6 +36,27 @@ one of the oldest open questions in number theory.
   </tr>
 </table>
 
+## Contents
+
+**Findings & results**
+
+- [Definitions](#definitions)
+- [Record holders](#record-holders)
+- [Sparsest extremal polynomial — the Max-U record (New)](#sparsest-extremal-polynomial--the-max-u-record-new)
+- [Generalising the Max-U construction](#generalising-the-max-u-construction)
+- [Generalising to two cyclotomic parameters](#generalising-to-two-cyclotomic-parameters)
+- [Densest extremal polynomials (New)](#densest-extremal-polynomials-new)
+- [Database-wide verification](#database-wide-verification)
+
+**Practical guide**
+
+- [How it works](#how-it-works)
+- [Building](#building)
+- [Usage](#usage)
+- [Data files](#data-files)
+- [References](#references)
+- [License & citation](#license--citation)
+
 ## Results
 
 The `AllKnownAdvanpix` database contains **48,341 primitive irreducible
@@ -91,21 +112,6 @@ prior literature. The two records inside the classical regime (Lehmer's
 M-record at degree 10, and the R-record at degree 20) are pre-existing
 historical entries included for completeness.
 
-The structural analysis of these polynomials surfaced a concrete
-**parametric construction** that reproduces *both* the smallest and the
-second-smallest known Salem polynomials. The two-parameter family
-
-$$P_{a,d,m,s}(x) = \Phi_a(x)(x^m+1) + s\,x^{(\phi(a)+m-\phi(d))/2}\,\Phi_d(x)$$
-
-contains Lehmer's polynomial as a factor in four different
-$(a, d, m, s)$ combinations, and the second-smallest known
-($M \approx 1.18837$ at degree 18) at $(a, d, m, s) = (2, 3, 21, -)$.
-Across the swept range it cannot produce $M$ smaller than Lehmer's number.
-The full PARI/GP analysis — Boyd-Lawton limit derivation, empirical
-sweeps over $m \in [5, 1001]$ for the $d$-only family, and $m \in [5, 201]$
-for the $(a, d)$ grid — is in
-[`doc/champion-analysis.md`](doc/champion-analysis.md).
-
 ### Sparsest extremal polynomial — the Max-U record (New)
 
 A degree-456 polynomial with only **three non-zero half-coefficients** packs
@@ -132,26 +138,109 @@ $$P_m(x) = (x+1)(x^m + 1) - x^{(m-1)/2} \Phi_3(x),$$
 rediscovers, after factoring out cyclotomic content, the second-smallest
 known Salem polynomial at $m = 21$
 ($M \approx 1.18836\ldots$, degree 18). Boyd–Lawton predicts
-$\lim_{m\to\infty} M(P_m) = \exp(m(F)) \approx 1.24936\ldots$, where $F$
-is the bivariate "lift" of the family. See
-[`doc/champion-analysis.md`](doc/champion-analysis.md) for the full
-analysis.
+$\lim_{m\to\infty} M(P_m) = \exp(m(F)) \approx 1.24936\ldots$ — see the
+section below for the full derivation.
 
-### Polynomial with the most real non-unity roots (Known180)
+### Generalising the Max-U construction
 
-The degree-20 polynomial with the smallest Mahler measure among those with
-$R = 4$ real non-unity roots (two reciprocal pairs):
+The exact decomposition of the Max-U champion suggests a **parametric
+family** indexed by odd $m$:
 
-$$P(x) = \sum_{k=17}^{20} x^k - \sum_{k=6}^{14} x^k + \sum_{k=0}^{3} x^k$$
+$$P_m(x) = (x+1)(x^m+1) - x^{(m-1)/2}\,\Phi_3(x), \qquad \deg P_m = m + 1.$$
 
-$$M(P) \approx 1.25363556570886317997\ldots, \quad \deg P = 20, \quad K = 2, \quad U = 16, \quad R = 4$$
+We computed $M(P_m)$ for every odd $m \in [5, 1001]$ and factored each
+$P_m$ over $\mathbb{Z}[x]$. The most striking finding: **$P_{21}(x)$
+factors as $\Phi_{12}(x) \cdot R_{18}(x)$** where $R_{18}$ is the
+irreducible degree-18 polynomial with $M(R_{18}) \approx 1.18836814751\ldots$
+— **the second-smallest known Salem polynomial** (just above Lehmer's
+1.17628). This is exactly the entry `18 1.188368…` in `AllKnownAdvanpix`.
 
-Equivalently, with all 21 coefficients written out:
+Selected values of $M$ (smallest non-cyclotomic factor of $P_m$):
 
-$$P(x) = x^{20} + x^{19} + x^{18} + x^{17} - x^{14} - x^{13} - x^{12} - x^{11} - x^{10} - x^9 - x^8 - x^7 - x^6 + x^3 + x^2 + x + 1$$
+| $m$ | $\deg$ of smallest non-cyc factor | $M$ |
+|---:|---:|---|
+| 11  | 12  | 1.25104661720… |
+| 17  | 18  | 1.21972085904… |
+| **21**  | **18**  | **1.18836814751… (Lehmer's sibling — 2nd smallest known)** |
+| 35  | 36  | 1.22649330147… |
+| 53  | 46  | 1.23074300908… |
+| 67  | 60  | 1.24006185904… |
+| 95  | 96  | 1.24866635341… |
+| 455 | 456 | 1.25491475758… (the Max-U champion itself) |
 
-This polynomial is part of the historical `Known180` list (it predates
-the present project), and remains the R-record in the combined database.
+Two observations:
+
+1. The family **reproduces** known Salem polynomials at small degrees —
+   $m = 21$ gives the second-smallest known Salem polynomial as an
+   irreducible factor.
+2. As $m \to \infty$ the Mahler measure of $P_m$ converges to $\approx 1.255$,
+   *above* Lehmer's number.
+
+#### Analytic limit (Boyd–Lawton theorem)
+
+The convergence is **not coincidental**. The family $P_m(x)$ is a univariate
+monomial substitution into the bivariate polynomial
+
+$$F(x, u) = x(x+1) u^2 - \Phi_3(x) u + (x+1),$$
+
+obtained by setting $u = x^{(m-1)/2}$ so that $x^m = x \cdot u^2$. By the
+**Boyd–Lawton theorem** (Boyd 1981, Lawton 1983), the Mahler measure of
+the univariate family converges to the (logarithmic) Mahler measure of the
+bivariate polynomial:
+
+$$\lim_{m \to \infty} M(P_m) = \exp\bigl(m(F)\bigr), \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi} \log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr|\,d\theta_1 d\theta_2.$$
+
+Numerical evaluation gives
+
+$$\log m(F) \approx 0.222630132139506025908217312245576858\ldots,$$
+
+$$\boxed{\lim_{m\to\infty} M(P_m) \approx 1.249358390752959362866\ldots}$$
+
+This is **above Lehmer's number** (1.17628…). The Boyd–Lawton limit is
+therefore a *barrier* for this particular family: no matter how large $m$
+grows, $M(P_m)$ stays $\geq 1.2493\ldots$, with the $m = 21$ minimum at
+$1.18837$ being the closest single case to Lehmer's bound that the family
+achieves.
+
+![Parametric family convergence](images/parametric_family_M_vs_m.png)
+
+(Reproduce with [`tools/scan_parametric_family.py`](tools/scan_parametric_family.py)
+and [`tools/plot_parametric_family.py`](tools/plot_parametric_family.py).)
+
+### Generalising to two cyclotomic parameters
+
+Replacing the background factor $(x+1) = \Phi_2$ by a general cyclotomic
+$\Phi_a$ gives a two-parameter family:
+
+$$P_{a,d,m,s}(x) = \Phi_a(x)(x^m+1) + s \cdot x^{(\phi(a)+m-\phi(d))/2}\,\Phi_d(x).$$
+
+We swept $a \in \{2, 3, 4, 6\}$, $d \in \{3, 5, 7, 8, 9, 10, 12\}$,
+$s \in \{-1, +1\}$, $m \in [5, 201]$ — factored each $P_{a,d,m,s}$ over
+$\mathbb{Z}$, and recorded the Mahler measure of the smallest non-cyclotomic
+irreducible factor.
+
+**Result.** Across the entire sweep, the global minimum is
+**$M = 1.17628\ldots$**, i.e. Lehmer's number itself. **Four** distinct
+parameter combinations all factor to include Lehmer's polynomial (or its
+$x \to -x$ reflection, which has the same Mahler measure):
+
+| $a$ | $d$ | $m$ | sign | smallest non-cyc factor |
+|---:|---:|---:|:---:|---|
+|  2  |  3  | 23  |  +  | Lehmer's polynomial (degree 10) |
+|  2  |  5  |  9  |  −  | Lehmer's polynomial |
+|  2  |  7  | 15  |  −  | Lehmer's polynomial |
+|  3  |  7  |  8  |  −  | Lehmer's polynomial |
+
+The second-smallest in the sweep is $M \approx 1.18837$ at
+$(a, d, m, s) = (2, 3, 21, -)$ — the Lehmer sibling we found earlier.
+
+**The cyclotomic-perturbation family cannot break Lehmer's bound, but it
+embeds Lehmer's polynomial naturally in many ways.** This is consistent
+with Boyd's conjecture that all small Mahler measures $> 1$ arise from a
+structured (Salem–Boyd-style) construction.
+
+Reproduce with [`tools/sweep_ad.py`](tools/sweep_ad.py); raw data in
+[`doc/ad_sweep.csv`](doc/ad_sweep.csv).
 
 ### Densest extremal polynomials (New)
 
@@ -195,6 +284,18 @@ typeset in LaTeX:
     </td>
   </tr>
 </table>
+
+### Database-wide verification
+
+Every one of the **48,341 polynomials** in `AllKnownAdvanpix` has been
+re-verified independently with [PARI/GP](https://pari.math.u-bordeaux.fr/)
+at 60-digit precision: irreducibility over $\mathbb{Z}$, Mahler measure
+agreement with the stored 72-digit value, and self-consistent root
+counts $(K, U, Q, R)$ satisfying the reciprocity identity $2K + U = N$.
+**No discrepancies remain.** The audit and the cross-checking script
+([`tools/bulk_verify.py`](tools/bulk_verify.py)) are reproducible end-to-end;
+per-entry results are recorded in
+[`doc/database-verification.csv`](doc/database-verification.csv).
 
 ## How it works
 
