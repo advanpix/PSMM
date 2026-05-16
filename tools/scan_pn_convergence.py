@@ -7,36 +7,40 @@
 # Author: Pavel Holoborodko <pavel@advanpix.com>
 #
 """
-scan_pn_convergence.py — convergence study and DB extraction for the Max-U family
+scan_pn_convergence.py — convergence study and DB extraction for the
+cyclotomic-perturbation families
 
-    P_N(x) = (x+1)(x^{N-1} + 1) - x^{N/2 - 1} Phi_3(x),  N even, N >= 6.
+    P_{a,d,sign,N}(x) = Phi_a(x) * (x^m + 1)
+                      + sign * x^k * Phi_d(x),
+    where N = phi(a) + m  (the polynomial degree, even),
+          k = (phi(a) + m - phi(d)) / 2.
+
+By default (a=2, d=3, sign=-1) this is the Max-U family P_N studied first.
 
 For each even N in a configurable range:
-  - Compute M(P_N) via PARI polroots (no factoring; factoring is the
-    bottleneck past N ~ 1000).
-  - Classify roots into K (outside |z|=1), U (on the circle, within eps),
+  - Compute M(P_{a,d,sign,N}) via PARI polroots (no factoring; factoring
+    is the bottleneck past N ~ 1000).
+  - Classify roots into K (outside |z|=1), U (on the circle within eps),
     Q (off-circle complex), R (off-circle real).
   - Sanity-check 2K + U = N and Q + R = 2K.
 
 Two outputs are written incrementally:
 
-  --output (default doc/parametric-family-convergence.csv):
+  --output  (convergence CSV):
       N, M_PN, abs_diff_from_limit, gap_from_previous, K, U, Q, R
-  (convergence-rate study)
+  (for the convergence-rate study)
 
-  --db-output (default doc/new_finds_d_only_pn_extended.txt):
-      AllKnownAdvanpix-format entries (one per line):
+  --db-output  (AllKnownAdvanpix-format entries, one line per N):
       N M_PN NNZ H L K U Q R c_0 c_1 ... c_{N/2}
-  (ready for `psmm -merge` into AllKnownAdvanpix)
+  (ready for `psmm -merge`)  Emitted only if 1.001 < M < 1.3 AND the
+  2K+U=N / Q+R=2K sanity passes.
 
-The half-coefficient vector for P_N is sparse with a known shape:
-  c_0 = c_N = 1, c_1 = c_{N-1} = 1, c_{N/2 +/- 1} = -1, c_{N/2} = -1, rest 0.
-So NNZ=3, H=1, L=7 for every member. No analytic uncertainty there; the
-PARI step is only needed for K, U, Q, R (and the high-precision M).
+Half-coefficients are constructed analytically from the (a, d, sign)
+polynomial form (no PARI for the coefficients).
 
-For all N >= ~100 in the family, P_N is empirically irreducible. The
-script does not run polisirreducible() (too slow at large N); a separate
-verification pass via tools/bulk_verify.py is the safety net.
+For all sufficiently large N in a given (a, d, sign) family, the
+polynomial P_{a,d,sign,N} is empirically irreducible (a separate
+verification pass via tools/bulk_verify.py is the safety net).
 """
 
 from __future__ import annotations
@@ -51,14 +55,91 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 
-# Corrected Boyd-Lawton limit for the Max-U family P_N
+# Corrected Boyd-Lawton limit for the Max-U family P_N (a=2,d=3,sign=-1)
 # (see tools/compute_boyd_lawton.py for the 1D Jensen-reduction proof).
-BOYD_LAWTON_LIMIT = "1.2554340377272518"
+# For other (a, d) pairs, use compute_boyd_lawton_family.py to get the
+# right limit; the value below is just the default for the convergence-CSV
+# diff column. Surveys: only (a=2, d=3) has L < 1.3.
+BOYD_LAWTON_LIMIT_DEFAULT = "1.2554340377272518"
 
 
-def gp_script(N: int, precision: int) -> str:
-    """gp script: compute M(P_N), K, U, Q, R via polroots — no factoring."""
-    half = N // 2 - 1
+# Cyclotomic Phi_n: coefficient vector low-degree-first
+# (Phi_2 = x+1 -> [1, 1] meaning 1 + 1*x).
+CYCLOTOMICS = {
+    2:  [1, 1],
+    3:  [1, 1, 1],
+    4:  [1, 0, 1],
+    5:  [1, 1, 1, 1, 1],
+    6:  [1, -1, 1],
+    7:  [1, 1, 1, 1, 1, 1, 1],
+    8:  [1, 0, 0, 0, 1],
+    9:  [1, 0, 0, 1, 0, 0, 1],
+    10: [1, -1, 1, -1, 1],
+    12: [1, 0, -1, 0, 1],
+}
+
+
+def phi_n(n: int) -> int:
+    return len(CYCLOTOMICS[n]) - 1
+
+
+def pari_poly_expr(coeffs: list[int], var: str = "x") -> str:
+    """Build a PARI polynomial expression from a coefficient vector
+       coeffs[i] = coefficient of x^i. Output like '1 + x + x^2'."""
+    terms = []
+    for i, c in enumerate(coeffs):
+        if c == 0:
+            continue
+        sign = "+" if c > 0 else "-"
+        mag = abs(c)
+        if i == 0:
+            body = str(mag)
+        elif i == 1:
+            body = var if mag == 1 else f"{mag}*{var}"
+        else:
+            body = f"{var}^{i}" if mag == 1 else f"{mag}*{var}^{i}"
+        if not terms:
+            terms.append(("-" + body) if sign == "-" else body)
+        else:
+            terms.append(f"{sign} {body}")
+    return " ".join(terms) if terms else "0"
+
+
+def construct_full_coeffs(a: int, d: int, sign: int, N: int) -> list[int]:
+    """Return the full coefficient list (length N+1) of P_{a,d,sign,N}.
+       P = Phi_a(x) * (x^m + 1) + sign * x^k * Phi_d(x),
+       with m = N - phi(a) and k = (N - phi(d)) / 2.
+       Caller is responsible for verifying that k is a non-negative integer
+       and that the polynomial is palindromic."""
+    pa = phi_n(a)
+    pd = phi_n(d)
+    m = N - pa
+    k_num = N - pd
+    assert k_num >= 0 and k_num % 2 == 0, \
+        f"k = (N-phi(d))/2 not a non-negative integer: N={N}, d={d}"
+    k = k_num // 2
+    coeffs = [0] * (N + 1)
+    phi_a = CYCLOTOMICS[a]
+    phi_d = CYCLOTOMICS[d]
+    # Phi_a(x) * (x^m + 1) -> add phi_a at positions 0..pa AND at positions m..m+pa
+    for i, c in enumerate(phi_a):
+        coeffs[i] += c
+        coeffs[i + m] += c
+    # sign * x^k * Phi_d(x)
+    for i, c in enumerate(phi_d):
+        coeffs[i + k] += sign * c
+    return coeffs
+
+
+def gp_script(a: int, d: int, sign: int, N: int, precision: int) -> str:
+    """gp script: compute M(P_{a,d,sign,N}), K, U, Q, R, irreducibility."""
+    pa = phi_n(a)
+    pd = phi_n(d)
+    m = N - pa
+    k = (N - pd) // 2
+    s_str = "+" if sign > 0 else "-"
+    phi_a_expr = pari_poly_expr(CYCLOTOMICS[a])
+    phi_d_expr = pari_poly_expr(CYCLOTOMICS[d])
     classify = (
         "r = abs(rts[i]); "
         "if (abs(r - 1) < eps, U += 1, "
@@ -67,44 +148,57 @@ def gp_script(N: int, precision: int) -> str:
     )
     return (
         f"default(realprecision, {precision});\n"
-        f"P = (x+1)*(x^{N-1} + 1) - x^{half} * (x^2 + x + 1);\n"
+        f"P = ({phi_a_expr}) * (x^{m} + 1) {s_str} x^{k} * ({phi_d_expr});\n"
         "rts = polroots(P);\n"
         "M = 1.0; K = 0; U = 0; Q = 0; R = 0;\n"
         "eps = 1e-30;\n"
         f"for (i = 1, #rts, {classify});\n"
-        "print(M, \" \", K, \" \", U, \" \", Q, \" \", R);\n"
+        "irr = polisirreducible(P);\n"
+        "print(M, \" \", K, \" \", U, \" \", Q, \" \", R, \" \", irr);\n"
     )
 
 
-def db_line_for(N: int, M_str: str, K: int, U: int, Q: int, R: int) -> str:
-    """Build an AllKnownAdvanpix-format line for P_N (sparse 5-term)."""
-    half_len = N // 2 + 1
-    # Initialise to zero; then set the known non-zero half-coefficients.
-    half = [0] * half_len
-    half[0] = 1                     # c_0 = leading = 1
-    half[1] = 1                     # c_1 = 1
-    half[N // 2 - 1] = -1           # c_{N/2 - 1} = -1 (off-middle)
-    half[N // 2] = -1               # c_{N/2}     = -1 (middle)
-    # NNZ, H, L from the known sparse structure
-    NNZ = 3
-    H   = 1
-    L   = 7
+def db_line_for(a: int, d: int, sign: int, N: int, M_str: str,
+                K: int, U: int, Q: int, R: int):
+    """Build an AllKnownAdvanpix-format line. Returns the line string or
+       None if the polynomial isn't palindromic (so doesn't belong in
+       AllKnownAdvanpix as a single half-coefficient block)."""
+    full = construct_full_coeffs(a, d, sign, N)
+    # Palindromic check: c_i == c_{N-i}
+    for i in range(N // 2 + 1):
+        if full[i] != full[N - i]:
+            return None
+    half = full[N // 2:][::-1]   # c_{N/2}, c_{N/2+1}, ..., c_N  reversed
+    # PSMM convention: half[0] = leading = c_N, half[N/2] = middle = c_{N/2}
+    half = [full[N - i] for i in range(N // 2 + 1)]
+    NNZ = sum(1 for c in half[1:] if c != 0)
+    H = max(abs(c) for c in half)
+    L = sum(abs(c) for c in full)
     coeffs = " ".join(str(c) for c in half)
     return f"{N} {M_str} {NNZ} {H} {L} {K} {U} {Q} {R} {coeffs}"
 
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--a", type=int, default=2,
+                    help="cyclotomic background index Phi_a (default 2)")
+    ap.add_argument("--d", type=int, default=3,
+                    help="cyclotomic perturbation index Phi_d (default 3)")
+    ap.add_argument("--sign", type=int, choices=[-1, 1], default=-1,
+                    help="sign of the perturbation (default -1)")
     ap.add_argument("--n-min", type=int, default=6,
                     help="minimum even N (default 6)")
     ap.add_argument("--n-max", type=int, default=2002,
-                    help="maximum N (default 2002, i.e. m up to 2001)")
+                    help="maximum N (default 2002)")
     ap.add_argument("--n-step", type=int, default=2,
                     help="step in N (default 2 — every even value)")
     ap.add_argument("--precision", type=int, default=40,
                     help="PARI realprecision in decimal digits (default 40)")
     ap.add_argument("--timeout", type=int, default=1800,
                     help="per-call gp timeout in seconds (default 1800)")
+    ap.add_argument("--limit-m", type=str, default=BOYD_LAWTON_LIMIT_DEFAULT,
+                    help="Boyd-Lawton limit for the convergence CSV "
+                         "abs_diff column (default matches a=2,d=3)")
     ap.add_argument("--output",
                     default=str(REPO / "doc" / "parametric-family-convergence.csv"),
                     help="convergence-study CSV path")
@@ -113,6 +207,10 @@ def main():
                     help="AllKnownAdvanpix-format entries path "
                          "(set to empty string to disable DB output)")
     args = ap.parse_args()
+    a, d, sign = args.a, args.d, args.sign
+    if phi_n(d) < phi_n(a):
+        raise SystemExit(f"need phi(d) >= phi(a); got phi({d})={phi_n(d)} "
+                         f"< phi({a})={phi_n(a)}")
 
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -120,14 +218,18 @@ def main():
     if db_path:
         db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Ensure even N values (the family is only defined for even N)
-    n_min = args.n_min if args.n_min % 2 == 0 else args.n_min + 1
-    if n_min < 6:
-        n_min = 6
+    # N parity is determined by phi(a) + phi(d): m = N - phi(a) must give
+    # integer k = (phi(a) + m - phi(d))/2 = (N - phi(d))/2. So (N - phi(d))
+    # must be even, i.e. N must have the same parity as phi(d).
+    n_parity = phi_n(d) % 2
+    n_min_floor = max(args.n_min, phi_n(a) + 1)  # need m >= 1
+    n_min = n_min_floor
+    while n_min % 2 != n_parity:
+        n_min += 1
     n_max = args.n_max
     step = args.n_step
     if step % 2 != 0:
-        step += 1  # round up to even step so we stay on even N
+        step += 1  # keep parity
 
     started = time.time()
     n_done = 0
@@ -146,7 +248,7 @@ def main():
                 try:
                     proc = subprocess.run(
                         ["gp", "-q", "--default", "parisize=4000000000"],
-                        input=gp_script(N, args.precision),
+                        input=gp_script(a, d, sign, N, args.precision),
                         capture_output=True, text=True,
                         timeout=args.timeout,
                     )
@@ -167,9 +269,9 @@ def main():
                     print(f"N={N}: no output", file=sys.stderr, flush=True)
                     last_M = None
                     continue
-                # gp output is "M K U Q R" on a single line
+                # gp output is "M K U Q R irr" on a single line
                 parts = lines[-1].split()
-                if len(parts) < 5:
+                if len(parts) < 6:
                     print(f"N={N}: malformed gp output: {lines[-1][:80]}",
                           file=sys.stderr, flush=True)
                     last_M = None
@@ -180,8 +282,9 @@ def main():
                     U = int(parts[2])
                     Q = int(parts[3])
                     R = int(parts[4])
+                    irr = int(parts[5])
                 except ValueError:
-                    print(f"N={N}: KUQR parse error", file=sys.stderr, flush=True)
+                    print(f"N={N}: KUQR/irr parse error", file=sys.stderr, flush=True)
                     last_M = None
                     continue
 
@@ -197,7 +300,7 @@ def main():
                 # Convergence CSV row
                 try:
                     M_f = float(M_str)
-                    limit_f = float(BOYD_LAWTON_LIMIT)
+                    limit_f = float(args.limit_m)
                     abs_diff = abs(M_f - limit_f)
                     if last_M is not None:
                         gap_f = abs(M_f - last_M)
@@ -211,17 +314,32 @@ def main():
                     w.writerow([N, M_str, "", "", K, U, Q, R])
                     last_M = None
 
-                # DB entry (only if sanity passed AND within DB scope:
-                #   1.001 < M < 1.3, i.e. has a non-cyclotomic factor and
-                #   sits inside AllKnownAdvanpix's M < 1.3 coverage.)
-                if db_f and ok and 1.001 < M_f < 1.3:
-                    db_f.write(db_line_for(N, M_str, K, U, Q, R) + "\n")
-                    n_db_emitted += 1
+                # DB entry: only emit if
+                #   - sanity passes (2K+U=N, Q+R=2K)
+                #   - polynomial is irreducible (reducible cases have their
+                #     non-cyclotomic factor already covered or extracted
+                #     separately; emitting a reducible P misrepresents it
+                #     as a single irreducible entry)
+                #   - 1.001 < M < 1.3 (non-cyclotomic factor + DB scope)
+                if db_f and ok and irr and 1.001 < M_f < 1.3:
+                    db_line = db_line_for(a, d, sign, N, M_str, K, U, Q, R)
+                    if db_line is None:
+                        print(f"N={N}: non-palindromic, skipping DB emit",
+                              file=sys.stderr, flush=True)
+                    else:
+                        db_f.write(db_line + "\n")
+                        n_db_emitted += 1
+                elif db_f and not irr:
+                    # Just log the skip; reducible cases at large N are
+                    # rare in these families.
+                    print(f"N={N}: reducible, skipping DB emit",
+                          file=sys.stderr, flush=True)
 
                 n_done += 1
                 elapsed = time.time() - started
                 rate = n_done / elapsed if elapsed > 0 else 0
-                print(f"N={N:6d} M={M_str[:14]} K={K:>3d} U={U:>4d} "
+                print(f"(a={a},d={d},s={sign:+d}) N={N:6d} "
+                      f"M={M_str[:14]} K={K:>3d} U={U:>4d} "
                       f"Q={Q:>3d} R={R:>2d}  |M-L|={abs_diff:.3e}  "
                       f"({n_done} done, {rate:.2f}/s, "
                       f"elapsed {elapsed/60:.1f} min)",
