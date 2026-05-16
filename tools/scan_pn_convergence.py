@@ -131,8 +131,16 @@ def construct_full_coeffs(a: int, d: int, sign: int, N: int) -> list[int]:
     return coeffs
 
 
-def gp_script(a: int, d: int, sign: int, N: int, precision: int) -> str:
-    """gp script: compute M(P_{a,d,sign,N}), K, U, Q, R, irreducibility."""
+_CLASSIFY_BODY = (
+    "r = abs(rts[j]); "
+    "if (abs(r - 1) < eps, U += 1, "
+    "    if (r > 1, M *= r; K += 1); "
+    "    if (abs(imag(rts[j])) < eps, R += 1, Q += 1) )"
+)
+
+
+def _build_p_expr(a: int, d: int, sign: int, N: int) -> str:
+    """Return the PARI expression for P_{a,d,sign,N}."""
     pa = phi_n(a)
     pd = phi_n(d)
     m = N - pa
@@ -140,6 +148,14 @@ def gp_script(a: int, d: int, sign: int, N: int, precision: int) -> str:
     s_str = "+" if sign > 0 else "-"
     phi_a_expr = pari_poly_expr(CYCLOTOMICS[a])
     phi_d_expr = pari_poly_expr(CYCLOTOMICS[d])
+    return (
+        f"({phi_a_expr}) * (x^{m} + 1) {s_str} x^{k} * ({phi_d_expr})"
+    )
+
+
+def gp_script(a: int, d: int, sign: int, N: int, precision: int) -> str:
+    """Cheap pass: compute M(P), K, U, Q, R, irreducibility (no factoring)."""
+    p_expr = _build_p_expr(a, d, sign, N)
     classify = (
         "r = abs(rts[i]); "
         "if (abs(r - 1) < eps, U += 1, "
@@ -148,13 +164,46 @@ def gp_script(a: int, d: int, sign: int, N: int, precision: int) -> str:
     )
     return (
         f"default(realprecision, {precision});\n"
-        f"P = ({phi_a_expr}) * (x^{m} + 1) {s_str} x^{k} * ({phi_d_expr});\n"
+        f"P = {p_expr};\n"
         "rts = polroots(P);\n"
         "M = 1.0; K = 0; U = 0; Q = 0; R = 0;\n"
         "eps = 1e-30;\n"
         f"for (i = 1, #rts, {classify});\n"
         "irr = polisirreducible(P);\n"
         "print(M, \" \", K, \" \", U, \" \", Q, \" \", R, \" \", irr);\n"
+    )
+
+
+def gp_script_factor(a: int, d: int, sign: int, N: int, precision: int) -> str:
+    """Reducible-case pass: factor P over Z, emit each non-cyclotomic factor
+       F with 1.001 < M(F) < 1.3 as an AllKnownAdvanpix-format line.
+       Mirrors PSMM's brute-force behaviour of factoring candidates and
+       collecting all sub-threshold irreducible Salem-type factors."""
+    p_expr = _build_p_expr(a, d, sign, N)
+    return (
+        f"default(realprecision, {precision});\n"
+        f"P = {p_expr};\n"
+        "fac = factor(P); nf = #fac~;\n"
+        "for (i = 1, nf, "
+        "  F = fac[i, 1]; deg_F = poldegree(F); "
+        "  if (deg_F < 2, next); "
+        "  rts = polroots(F); "
+        "  M = 1.0; K = 0; U = 0; Q = 0; R = 0; eps = 1e-30; "
+        f"  for (j = 1, #rts, {_CLASSIFY_BODY}); "
+        "  if (M <= 1.001 || M >= 1.3, next); "
+        "  if (2*K + U != deg_F || Q + R != 2*K, "
+        "      print(\"SKIP_KUQR \", deg_F, \" \", K, \" \", U, \" \", Q, \" \", R); next); "
+        "  if (polcoef(F, deg_F) != polcoef(F, 0), "
+        "      print(\"SKIP_NONPALI \", deg_F); next); "
+        "  half = vector(deg_F\\2 + 1, k, polcoef(F, deg_F - (k-1))); "
+        "  NNZ = 0; for (k = 2, #half, if (half[k] != 0, NNZ += 1)); "
+        "  Hh = 0; for (k = 1, #half, if (abs(half[k]) > Hh, Hh = abs(half[k]))); "
+        "  L = 0; for (k = 0, deg_F, L += abs(polcoef(F, k))); "
+        "  out = Str(deg_F, \" \", M, \" \", NNZ, \" \", Hh, \" \", L, "
+        "            \" \", K, \" \", U, \" \", Q, \" \", R); "
+        "  for (k = 1, #half, out = Str(out, \" \", half[k])); "
+        "  print(\"FACTOR \", out));\n"
+        "print(\"END\");\n"
     )
 
 
@@ -314,26 +363,49 @@ def main():
                     w.writerow([N, M_str, "", "", K, U, Q, R])
                     last_M = None
 
-                # DB entry: only emit if
-                #   - sanity passes (2K+U=N, Q+R=2K)
-                #   - polynomial is irreducible (reducible cases have their
-                #     non-cyclotomic factor already covered or extracted
-                #     separately; emitting a reducible P misrepresents it
-                #     as a single irreducible entry)
-                #   - 1.001 < M < 1.3 (non-cyclotomic factor + DB scope)
-                if db_f and ok and irr and 1.001 < M_f < 1.3:
-                    db_line = db_line_for(a, d, sign, N, M_str, K, U, Q, R)
-                    if db_line is None:
-                        print(f"N={N}: non-palindromic, skipping DB emit",
-                              file=sys.stderr, flush=True)
+                # DB-emit logic — mirrors PSMM brute-force search:
+                #   - if irreducible AND 1.001 < M < 1.3: emit P directly
+                #   - if reducible AND M < 1.3: factor P, extract each
+                #     non-cyclotomic factor F with 1.001 < M(F) < 1.3
+                if db_f and ok and 1.001 < M_f < 1.3:
+                    if irr:
+                        db_line = db_line_for(a, d, sign, N, M_str,
+                                              K, U, Q, R)
+                        if db_line is None:
+                            print(f"N={N}: non-palindromic, skipping DB emit",
+                                  file=sys.stderr, flush=True)
+                        else:
+                            db_f.write(db_line + "\n")
+                            n_db_emitted += 1
                     else:
-                        db_f.write(db_line + "\n")
-                        n_db_emitted += 1
-                elif db_f and not irr:
-                    # Just log the skip; reducible cases at large N are
-                    # rare in these families.
-                    print(f"N={N}: reducible, skipping DB emit",
-                          file=sys.stderr, flush=True)
+                        # Reducible: factor and emit each non-cyclo factor.
+                        try:
+                            proc2 = subprocess.run(
+                                ["gp", "-q", "--default",
+                                 "parisize=4000000000"],
+                                input=gp_script_factor(a, d, sign, N,
+                                                       args.precision),
+                                capture_output=True, text=True,
+                                timeout=args.timeout,
+                            )
+                        except subprocess.TimeoutExpired:
+                            print(f"N={N}: factor timeout",
+                                  file=sys.stderr, flush=True)
+                            proc2 = None
+                        if proc2 and proc2.returncode == 0:
+                            n_factors_emitted = 0
+                            for ln in proc2.stdout.splitlines():
+                                ln = ln.strip()
+                                if ln.startswith("FACTOR "):
+                                    db_f.write(ln[len("FACTOR "):] + "\n")
+                                    n_factors_emitted += 1
+                                    n_db_emitted += 1
+                                elif ln.startswith("SKIP_"):
+                                    print(f"N={N}: factor skipped: {ln}",
+                                          file=sys.stderr, flush=True)
+                            print(f"N={N}: reducible -> "
+                                  f"emitted {n_factors_emitted} factor(s)",
+                                  file=sys.stderr, flush=True)
 
                 n_done += 1
                 elapsed = time.time() - started
