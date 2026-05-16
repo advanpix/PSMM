@@ -43,3 +43,6 @@ CMakeUserPresets.json
 .idea/
 *.swp
 __pycache__/
+
+# Database backups (created before psmm -merge)
+AllKnownAdvanpix.bak.*
