@@ -129,12 +129,12 @@ $$P_N(x) = (x+1)(x^{N-1}+1) - x^{N/2-1}\Phi_3(x), \qquad \Phi_3(x) = x^2+x+1, \q
 
 Four illustrative members:
 
-| $N$ | $P_N(x)$ | $M(P_N)$ | factorisation |
-|---:|---|---|:---|
-| 6 | $x^6 + x^5 - x^4 - x^3 - x^2 + x + 1$ | $1.55603\ldots$ | irreducible |
-| 22 | $x^{22} + x^{21} - x^{12} - x^{11} - x^{10} + x + 1$ | $1.18837\ldots$ | $\Phi_{12} \cdot R_{18}$ |
-| 456 | $x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$ | $1.25491\ldots$ | irreducible |
-| 1002 | $x^{1002} + x^{1001} - x^{502} - x^{501} - x^{500} + x + 1$ | $1.25553\ldots$ | irreducible |
+| $N$ | $P_N(x)$ | $M(P_N)$ |
+|---:|---|---|
+| 6 | $x^6 + x^5 - x^4 - x^3 - x^2 + x + 1$ | $1.55603\ldots$ |
+| 22 | $x^{22} + x^{21} - x^{12} - x^{11} - x^{10} + x + 1$ | $1.18837\ldots$ |
+| 456 | $x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$ | $1.25491\ldots$ |
+| 1002 | $x^{1002} + x^{1001} - x^{502} - x^{501} - x^{500} + x + 1$ | $1.25553\ldots$ |
 
 The $N=22$ member is special: $P_{22}$ factors as $\Phi_{12}(x) \cdot R_{18}(x)$,
 where $R_{18}$ is the **second-smallest known Salem polynomial**
