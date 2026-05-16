@@ -59,9 +59,12 @@ one of the oldest open questions in number theory.
 
 ## Results
 
-The `AllKnownAdvanpix` database contains **48,341 primitive irreducible
-reciprocal polynomials** with Mahler measure $M(P) < 1.3$, collected by
-exhaustive search up to degree 456. It is a strict superset of
+The `AllKnownAdvanpix` database contains **48,614 primitive irreducible
+reciprocal polynomials** with Mahler measure $M(P) < 1.3$. The first
+48,341 entries were collected by exhaustive PSMM search up to degree 456;
+the remaining 273 were derived analytically from the
+[Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
+and extend the database to degree 1002. The set is a strict superset of
 Mossinghoff's historical `Known180` list (~8,500 polynomials up to
 degree 180) — **all polynomials of degree > 180 in our database are new
 discoveries made with this search program**.
@@ -177,16 +180,25 @@ the bivariate polynomial:
 
 $$\lim_{N \to \infty} M(P_N) = \exp\bigl(m(F)\bigr), \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi} \log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr| d\theta_1 d\theta_2.$$
 
-Numerical evaluation gives
+Numerical evaluation (via the Jensen-lemma reduction to a 1D integral —
+see [`tools/compute_boyd_lawton.py`](tools/compute_boyd_lawton.py))
+gives
 
-$$\log m(F) \approx 0.222630132139506025908217312245576858\ldots,$$
+$$m(F) \approx 0.22748124\ldots,$$
 
-$$\boxed{\lim_{N\to\infty} M(P_N) \approx 1.249358390752959362866\ldots}$$
+$$\boxed{\lim_{N\to\infty} M(P_N) = \exp\bigl(m(F)\bigr) \approx 1.2554340\ldots}$$
 
-This is **above Lehmer's number** ($1.17628\ldots$). The Boyd–Lawton limit
-is therefore a *barrier* for this family: no matter how large $N$ grows,
-$M(P_N)$ stays $\geq 1.2493\ldots$, with the $N=22$ member at $1.18837$
-being the closest single case to Lehmer's bound that the family achieves.
+This value is corroborated by the empirical mean of $M(P_N)$ over all
+even $N \in [500, 1002]$ in our scan: $\overline{M(P_N)} = 1.2554338$
+(252 samples, $\sigma = 2.2 \times 10^{-4}$), agreeing with the
+analytic limit to seven decimal places. The residual at $N = 1002$ is
+$M(P_{1002}) - L \approx +9.5 \times 10^{-5}$.
+
+The Boyd–Lawton limit is **above Lehmer's number** ($1.17628\ldots$),
+so it is a *barrier* for this family: no matter how large $N$ grows,
+$M(P_N)$ stays $\geq 1.2554\ldots$ in the limit, with the $N=22$ member
+at $1.18837$ being the closest single case to Lehmer's bound that the
+family achieves.
 
 ![Parametric family convergence](images/parametric_family_M_vs_m.png)
 
@@ -277,7 +289,7 @@ typeset in LaTeX:
 ### Closest Mahler-measure pair
 
 A natural question for any large set of algebraic numbers is *how close
-together can two of them be?* Scanning all 48,341 entries in
+together can two of them be?* Scanning all 48,614 entries in
 `AllKnownAdvanpix`, the two polynomials whose Mahler measures differ by
 the **smallest amount** are:
 
@@ -314,12 +326,13 @@ Reproduce with `./build/psmm -analyze=AllKnownAdvanpix` (look for the line
 
 ### Database-wide verification
 
-Every one of the **48,341 polynomials** in `AllKnownAdvanpix` has been
+Every one of the **48,614 polynomials** in `AllKnownAdvanpix` has been
 re-verified independently with [PARI/GP](https://pari.math.u-bordeaux.fr/)
-at 60-digit precision: irreducibility over $\mathbb{Z}$, Mahler measure
-agreement with the stored 72-digit value, and self-consistent root
-counts $(K, U, Q, R)$ satisfying the reciprocity identity $2K + U = N$.
-**No discrepancies remain.** The audit and the cross-checking script
+at 60-digit precision (120-digit precision for the 273 parametric
+entries): irreducibility over $\mathbb{Z}$, Mahler measure agreement with
+the stored 72-digit value, and self-consistent root counts $(K, U, Q, R)$
+satisfying the reciprocity identity $2K + U = N$. **No discrepancies
+remain.** The audit and the cross-checking script
 ([`tools/bulk_verify.py`](tools/bulk_verify.py)) are reproducible end-to-end;
 per-entry results are recorded in
 [`doc/database-verification.csv`](doc/database-verification.csv).
