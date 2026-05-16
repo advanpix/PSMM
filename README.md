@@ -42,8 +42,7 @@ one of the oldest open questions in number theory.
 
 - [Definitions](#definitions)
 - [Record holders](#record-holders)
-- [Sparsest extremal polynomial — the Max-U record](#sparsest-extremal-polynomial--the-max-u-record)
-- [Generalising the Max-U construction](#generalising-the-max-u-construction)
+- [The Max-U family — sparsest polynomials with most roots on |z|=1](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
 - [Generalising to two cyclotomic parameters](#generalising-to-two-cyclotomic-parameters)
 - [Densest extremal polynomials](#densest-extremal-polynomials)
 - [Closest Mahler-measure pair](#closest-mahler-measure-pair)
@@ -105,97 +104,107 @@ the full polynomial is recovered by reciprocity $a_k = a_{N-k}$.
 | Largest length | L = 4173 | **New** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
 | Most roots outside &#124;z&#124;=1 | K = 76 | **New** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
 | Most complex non-unity | Q = 152 | **New** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
-| Most roots on &#124;z&#124;=1 | U = 396 | **New** | 456 | 1.25491… | 3 | 1 | 7 | 30 | 396 | 60 | 0 |
 
-Six of the eight category records are new discoveries — they live at
-degrees 348, 432, 452, and 456, well above the 180-degree boundary of the
+Five of the seven category records are new discoveries — they live at
+degrees 348, 432, and 452, well above the 180-degree boundary of the
 prior literature. The two records inside the classical regime (Lehmer's
 M-record at degree 10, and the R-record at degree 20) are pre-existing
 historical entries included for completeness.
 
-### Sparsest extremal polynomial — the Max-U record
+There is no entry for "most roots on $|z|=1$" because that record is held
+by an *infinite parametric family*, not a single polynomial — see
+[The Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
+below.
 
-A degree-456 polynomial with only **three non-zero half-coefficients** packs
-**396 roots onto the unit circle** in conjugate pairs:
+### The Max-U family — sparsest polynomials with most roots on $|z|=1$
 
-$$P(x) = x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$$
+Among the polynomials in our database, an unusual class stands out: **very
+sparse five-term reciprocals where almost all roots sit on the unit
+circle**. They follow a single template, parameterised by even degree $N$:
 
-$$M(P) \approx 1.25491475757884793378\ldots, \quad \deg P = 456, \quad U = 396, \quad K = 30, \quad Q = 60$$
+$$P_N(x) = (x+1)(x^{N-1}+1) - x^{N/2-1}\Phi_3(x), \qquad \Phi_3(x) = x^2+x+1, \quad N \text{ even}, \quad N \geq 6.$$
 
-**Exact structural decomposition.** This polynomial is **the cyclotomic
-product $(x+1)(x^{455}+1)$ perturbed by a single sparse $\Phi_3$ term:**
+Four illustrative members:
 
-$$P(x) = (x+1)(x^{455} + 1) - x^{227} \Phi_3(x), \qquad \Phi_3(x) = x^2 + x + 1.$$
+| $N$ | $P_N(x)$ | $M(P_N)$ | factorisation |
+|---:|---|---|:---|
+| 6 | $x^6 + x^5 - x^4 - x^3 - x^2 + x + 1$ | $1.55603\ldots$ | irreducible |
+| 22 | $x^{22} + x^{21} - x^{12} - x^{11} - x^{10} + x + 1$ | $1.18837\ldots$ | $\Phi_{12} \cdot R_{18}$ |
+| 456 | $x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$ | $1.25491\ldots$ | irreducible |
+| 1002 | $x^{1002} + x^{1001} - x^{502} - x^{501} - x^{500} + x + 1$ | $1.25553\ldots$ | irreducible |
 
-The first factor is a product of cyclotomic polynomials — all 456 of its
-roots sit on the unit circle. The single perturbation term $-x^{227}\Phi_3(x)$,
-placed at the half-degree, pushes exactly 60 of those roots off the circle
-into 15 Salem quadruplets (each at distance $\sim 0.008$ from $|z|=1$),
-producing the irreducible polynomial above. **Generalising the construction
-to odd $m$,**
+The $N=22$ member is special: $P_{22}$ factors as $\Phi_{12}(x) \cdot R_{18}(x)$,
+where $R_{18}$ is the **second-smallest known Salem polynomial**
+($M \approx 1.18837$, just above Lehmer's $1.17628$). It is the entry
+`18 1.188368…` already present in `AllKnownAdvanpix`.
 
-$$P_m(x) = (x+1)(x^m + 1) - x^{(m-1)/2} \Phi_3(x),$$
+The $N=456$ member is the polynomial PSMM's brute-force search originally
+surfaced — three non-zero half-coefficients and yet $U=396$ roots on the
+unit circle. Inspecting its structure revealed the template above; we then
+computed every $P_N$ for even $N \in [6, 1002]$ and merged the new finds
+back into the database.
 
-rediscovers, after factoring out cyclotomic content, the second-smallest
-known Salem polynomial at $m = 21$
-($M \approx 1.18836\ldots$, degree 18). Boyd–Lawton predicts
-$\lim_{m\to\infty} M(P_m) = \exp(m(F)) \approx 1.24936\ldots$ — see the
-section below for the full derivation.
+**Structural decomposition.** Each $P_N$ is the cyclotomic product
+$(x+1)(x^{N-1}+1)$ perturbed by a single sparse $\Phi_3$ term. The first
+factor is a product of cyclotomic polynomials — all $N$ of its roots sit
+on the unit circle. The single perturbation $-x^{N/2-1}\Phi_3(x)$, placed
+at the half-degree, pushes a small number of roots off the circle into
+Salem quadruplets (and occasionally one real reciprocal pair), leaving
+the rest on $|z|=1$.
 
-### Generalising the Max-U construction
+**Empirical scaling.** Across all $N \in [6, 1002]$ we computed, the
+count of off-circle roots scales linearly with $N$ at a remarkably constant
+rate:
 
-The exact decomposition of the Max-U champion suggests a **parametric
-family** indexed by odd $m$:
+$$\frac{K}{N} \approx 0.067 \approx \frac{1}{15}, \qquad \frac{U}{N} \approx \frac{13}{15}.$$
 
-$$P_m(x) = (x+1)(x^m+1) - x^{(m-1)/2}\Phi_3(x), \qquad \deg P_m = m + 1.$$
-
-We computed $M(P_m)$ for every odd $m \in [5, 1001]$ and factored each
-$P_m$ over $\mathbb{Z}[x]$. The most striking finding: **$P_{21}(x)$
-factors as $\Phi_{12}(x) \cdot R_{18}(x)$** where $R_{18}$ is the
-irreducible degree-18 polynomial with $M(R_{18}) \approx 1.18836814751\ldots$
-— **the second-smallest known Salem polynomial** (just above Lehmer's
-1.17628). This is exactly the entry `18 1.188368…` in `AllKnownAdvanpix`.
+So roughly **13 of every 15 roots sit on the unit circle**, irrespective
+of $N$. The $N=1002$ member realises $U=868$ — the largest $U$ in the
+database, but the family extends to arbitrary $N$ and $U \to \infty$.
 
 #### Analytic limit (Boyd–Lawton theorem)
 
-The convergence is **not coincidental**. The family $P_m(x)$ is a univariate
-monomial substitution into the bivariate polynomial
+The convergence of $M(P_N)$ as $N \to \infty$ is **not coincidental**.
+The family is a univariate monomial substitution into the bivariate
+polynomial
 
 $$F(x, u) = x(x+1) u^2 - \Phi_3(x) u + (x+1),$$
 
-obtained by setting $u = x^{(m-1)/2}$ so that $x^m = x \cdot u^2$. By the
-**Boyd–Lawton theorem** (Boyd 1981, Lawton 1983), the Mahler measure of
-the univariate family converges to the (logarithmic) Mahler measure of the
-bivariate polynomial:
+obtained by setting $u = x^{N/2-1}$ so that $x^{N-1} = x \cdot u^2$. By
+the **Boyd–Lawton theorem** (Boyd 1981, Lawton 1983), the Mahler measure
+of the univariate family converges to the (logarithmic) Mahler measure of
+the bivariate polynomial:
 
-$$\lim_{m \to \infty} M(P_m) = \exp\bigl(m(F)\bigr), \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi} \log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr| d\theta_1 d\theta_2.$$
+$$\lim_{N \to \infty} M(P_N) = \exp\bigl(m(F)\bigr), \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi} \log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr| d\theta_1 d\theta_2.$$
 
 Numerical evaluation gives
 
 $$\log m(F) \approx 0.222630132139506025908217312245576858\ldots,$$
 
-$$\boxed{\lim_{m\to\infty} M(P_m) \approx 1.249358390752959362866\ldots}$$
+$$\boxed{\lim_{N\to\infty} M(P_N) \approx 1.249358390752959362866\ldots}$$
 
-This is **above Lehmer's number** (1.17628…). The Boyd–Lawton limit is
-therefore a *barrier* for this particular family: no matter how large $m$
-grows, $M(P_m)$ stays $\geq 1.2493\ldots$, with the $m = 21$ minimum at
-$1.18837$ being the closest single case to Lehmer's bound that the family
-achieves.
+This is **above Lehmer's number** ($1.17628\ldots$). The Boyd–Lawton limit
+is therefore a *barrier* for this family: no matter how large $N$ grows,
+$M(P_N)$ stays $\geq 1.2493\ldots$, with the $N=22$ member at $1.18837$
+being the closest single case to Lehmer's bound that the family achieves.
 
 ![Parametric family convergence](images/parametric_family_M_vs_m.png)
 
 (Reproduce with [`tools/scan_parametric_family.py`](tools/scan_parametric_family.py)
-and [`tools/plot_parametric_family.py`](tools/plot_parametric_family.py).)
+and [`tools/plot_parametric_family.py`](tools/plot_parametric_family.py). The
+plot's $x$-axis labels by the perturbation index $m = N - 1$.)
 
 ### Generalising to two cyclotomic parameters
 
 Replacing the background factor $(x+1) = \Phi_2$ by a general cyclotomic
 $\Phi_a$ gives a two-parameter family:
 
-$$P_{a,d,m,s}(x) = \Phi_a(x)(x^m+1) + s \cdot x^{(\phi(a)+m-\phi(d))/2}\Phi_d(x).$$
+$$P_{a,d,k,s}(x) = \Phi_a(x)(x^k+1) + s \cdot x^{(\phi(a)+k-\phi(d))/2}\Phi_d(x), \qquad \deg P_{a,d,k,s} = \phi(a) + k.$$
 
-We swept $a \in \{2, 3, 4, 6\}$, $d \in \{3, 5, 7, 8, 9, 10, 12\}$,
-$s \in \{-1, +1\}$, $m \in [5, 201]$ — factored each $P_{a,d,m,s}$ over
+(Here $k$ is a perturbation index, not the polynomial degree — different
+$(a, d, k, s)$ choices yield polynomials of different degrees.) We swept
+$a \in \{2, 3, 4, 6\}$, $d \in \{3, 5, 7, 8, 9, 10, 12\}$,
+$s \in \{-1, +1\}$, $k \in [5, 201]$ — factored each $P_{a,d,k,s}$ over
 $\mathbb{Z}$, and recorded the Mahler measure of the smallest non-cyclotomic
 irreducible factor.
 
@@ -204,7 +213,7 @@ irreducible factor.
 parameter combinations all factor to include Lehmer's polynomial (or its
 $x \to -x$ reflection, which has the same Mahler measure):
 
-| $a$ | $d$ | $m$ | sign | smallest non-cyc factor |
+| $a$ | $d$ | $k$ | sign | smallest non-cyc factor |
 |---:|---:|---:|:---:|---|
 |  2  |  3  | 23  |  +  | Lehmer's polynomial (degree 10) |
 |  2  |  5  |  9  |  −  | Lehmer's polynomial |
@@ -212,7 +221,7 @@ $x \to -x$ reflection, which has the same Mahler measure):
 |  3  |  7  |  8  |  −  | Lehmer's polynomial |
 
 The second-smallest in the sweep is $M \approx 1.18837$ at
-$(a, d, m, s) = (2, 3, 21, -)$ — the Lehmer sibling we found earlier.
+$(a, d, k, s) = (2, 3, 21, -)$ — the Lehmer sibling we found earlier.
 
 **The cyclotomic-perturbation family cannot break Lehmer's bound, but it
 embeds Lehmer's polynomial naturally in many ways.** This is consistent
@@ -287,6 +296,18 @@ Both happen to be among the sparsest five-term reciprocals in the database
 ($\mathrm{NNZ} = 2$, $L = 5$), with the perturbations placed at the
 half-degree and at one off-centre position — but the off-centre placements
 differ ($41$ vs $61$) and so do the signs.
+
+**This record is a finite-truncation artifact, not a structural bound.**
+For any convergent family $\\{P_N\\}$ with $M(P_N) \to L$, the Cauchy
+property says: for any $\varepsilon > 0$ there exist $N_1, N_2$ with
+$|M(P_{N_1}) - M(P_{N_2})| < \varepsilon$. Pick $N_1, N_2$ large enough
+that each $M(P_{N_i})$ is within $\varepsilon/2$ of $L$. The
+[Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
+above is exactly such a family: $M(P_N) \to 1.24936\ldots$ Empirically
+$|M(P_N) - L| = O(1/N)$ and the consecutive gap $|M(P_N) - M(P_{N+2})|$
+shrinks like $O(1/N^2)$. Extending the family far enough beyond
+$N = 1002$ would eventually undercut the $7.72 \times 10^{-13}$ pair
+above with a pair drawn entirely from a single family.
 
 Reproduce with `./build/psmm -analyze=AllKnownAdvanpix` (look for the line
 "Polynomials with nearest Mahler measures").
