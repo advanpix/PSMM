@@ -59,15 +59,18 @@ one of the oldest open questions in number theory.
 
 ## Results
 
-The `AllKnownAdvanpix` database contains **48,614 primitive irreducible
-reciprocal polynomials** with Mahler measure $M(P) < 1.3$. The first
-48,341 entries were collected by exhaustive PSMM search up to degree 456;
-the remaining 273 were derived analytically from the
+The classical reference is Mossinghoff's `Known180` list (8,438
+polynomials, all with degree ≤ 180). **Our program found 40,176 new
+polynomials**: 96 at degree ≤ 180 (in degrees 174–180, where Known180
+was incomplete) and 40,080 at degree > 180. Sorted by Mahler measure,
+**88% of the top 10,000 polynomials are new finds from our search**.
+
+Overall, the `AllKnownAdvanpix` database contains **48,614 primitive
+irreducible reciprocal polynomials** with Mahler measure $M(P) < 1.3$.
+Of these, 48,341 came from exhaustive PSMM search up to degree 456; the
+remaining 273 were derived analytically from the
 [Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
-and extend the database to degree 1002. The set is a strict superset of
-Mossinghoff's historical `Known180` list (~8,500 polynomials up to
-degree 180) — **all polynomials of degree > 180 in our database are new
-discoveries made with this search program**.
+and extend the database to degree 1002.
 
 ### Definitions
 
