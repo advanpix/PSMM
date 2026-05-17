@@ -341,10 +341,9 @@ Reproduce with `./build/psmm -analyze=AllKnownAdvanpix` (look for the line
 ### Database-wide verification
 
 Every one of the **48,700 polynomials** in `AllKnownAdvanpix` has been
-re-verified independently with [PARI/GP](https://pari.math.u-bordeaux.fr/)
-at 60-digit precision (120-digit precision for the 359 parametric
-entries): irreducibility over $\mathbb{Z}$, Mahler measure agreement with
-the stored 72-digit value, and self-consistent root counts $(K, U, Q, R)$
+re-verified independently with [PARI/GP](https://pari.math.u-bordeaux.fr/):
+irreducibility over $\mathbb{Z}$, Mahler measure agreement with the
+stored 72-digit value, and self-consistent root counts $(K, U, Q, R)$
 satisfying the reciprocity identity $2K + U = N$. **No discrepancies
 remain.** The audit and the cross-checking script
 ([`tools/bulk_verify.py`](tools/bulk_verify.py)) are reproducible end-to-end;
