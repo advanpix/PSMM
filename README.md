@@ -329,7 +329,7 @@ property says: for any $\varepsilon > 0$ there exist $N_1, N_2$ with
 $|M(P_{N_1}) - M(P_{N_2})| < \varepsilon$. Pick $N_1, N_2$ large enough
 that each $M(P_{N_i})$ is within $\varepsilon/2$ of $L$. The
 [Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
-above is exactly such a family: $M(P_N) \to 1.24936\ldots$ Empirically
+above is exactly such a family: $M(P_N) \to 1.2554340\ldots$ Empirically
 $|M(P_N) - L| = O(1/N)$ and the consecutive gap $|M(P_N) - M(P_{N+2})|$
 shrinks like $O(1/N^2)$. Extending the family far enough beyond
 $N = 1002$ would eventually undercut the $7.72 \times 10^{-13}$ pair
