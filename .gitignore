@@ -48,3 +48,6 @@ __pycache__/
 AllKnownAdvanpix.bak.*
 .private/
 roots/
+# Scratch space: intermediate CSVs, exploratory plots, partial scan outputs,
+# precomputed family-roots files. Never committed.
+work/
