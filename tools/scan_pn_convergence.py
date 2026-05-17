@@ -186,8 +186,12 @@ def _build_p_expr(a: int, d: int, sign: int, N: int) -> str:
     )
 
 
-def gp_script(a: int, d: int, sign: int, N: int, precision: int) -> str:
-    """Cheap pass: compute M(P), K, U, Q, R, irreducibility (no factoring)."""
+def gp_script(a: int, d: int, sign: int, N: int, precision: int,
+              emit_roots: bool = False) -> str:
+    """Cheap pass: compute M(P), K, U, Q, R, irreducibility (no factoring).
+    With emit_roots=True, also prints one "ROOT re im" line per root of
+    P inside the same polroots call, so a downstream --roots-output path
+    can collect them without a second polroots invocation."""
     p_expr = _build_p_expr(a, d, sign, N)
     classify = (
         "r = abs(rts[i]); "
@@ -195,13 +199,17 @@ def gp_script(a: int, d: int, sign: int, N: int, precision: int) -> str:
         "    if (r > 1, M *= r; K += 1); "
         "    if (abs(imag(rts[i])) < eps, R += 1, Q += 1) )"
     )
+    root_emit = (
+        "print(\"ROOT \", real(rts[i]), \" \", imag(rts[i])); "
+        if emit_roots else ""
+    )
     return (
         f"default(realprecision, {precision});\n"
         f"P = {p_expr};\n"
         "rts = polroots(P);\n"
         "M = 1.0; K = 0; U = 0; Q = 0; R = 0;\n"
         "eps = 1e-30;\n"
-        f"for (i = 1, #rts, {classify});\n"
+        f"for (i = 1, #rts, {root_emit}{classify});\n"
         "irr = polisirreducible(P);\n"
         "print(M, \" \", K, \" \", U, \" \", Q, \" \", R, \" \", irr);\n"
     )
@@ -290,6 +298,13 @@ def main():
                     default=str(REPO / "doc" / "new_finds_d_only_pn_extended.txt"),
                     help="AllKnownAdvanpix-format entries path "
                          "(set to empty string to disable DB output)")
+    ap.add_argument("--roots-output",
+                    default="",
+                    help="path to save root coordinates per N in "
+                         "compute_roots block format (header is the "
+                         "DB-style line for P_N, body is one 'real imag' "
+                         "per root). NOT filtered by M<1.3 -- all N values "
+                         "are emitted. Default: empty = no roots output.")
     args = ap.parse_args()
     a, d, sign = args.a, args.d, args.sign
     if phi_n(d) < phi_n(a):
@@ -301,6 +316,10 @@ def main():
     db_path = Path(args.db_output) if args.db_output else None
     if db_path:
         db_path.parent.mkdir(parents=True, exist_ok=True)
+    roots_path = Path(args.roots_output) if args.roots_output else None
+    if roots_path:
+        roots_path.parent.mkdir(parents=True, exist_ok=True)
+    emit_roots = roots_path is not None
 
     # N parity is determined by phi(a) + phi(d): m = N - phi(a) must give
     # integer k = (phi(a) + m - phi(d))/2 = (N - phi(d))/2. So (N - phi(d))
@@ -322,6 +341,7 @@ def main():
     last_M = None  # for gap_from_previous
 
     db_f = db_path.open("w", buffering=1) if db_path else None
+    roots_f = roots_path.open("w", buffering=1) if roots_path else None
     try:
         with out_path.open("w", buffering=1) as out:
             w = csv.writer(out)
@@ -332,7 +352,8 @@ def main():
                 try:
                     proc = subprocess.run(
                         ["gp", "-q", "--default", "parisize=4000000000"],
-                        input=gp_script(a, d, sign, N, args.precision),
+                        input=gp_script(a, d, sign, N, args.precision,
+                                        emit_roots=emit_roots),
                         capture_output=True, text=True,
                         timeout=args.timeout,
                     )
@@ -353,10 +374,20 @@ def main():
                     print(f"N={N}: no output", file=sys.stderr, flush=True)
                     last_M = None
                     continue
-                # gp output is "M K U Q R irr" on a single line
-                parts = lines[-1].split()
+                # Separate ROOT lines (when emit_roots is on) from the
+                # single summary line. Summary is "M K U Q R irr".
+                root_lines = [ln for ln in lines if ln.startswith("ROOT ")]
+                summary_lines = [ln for ln in lines
+                                 if not ln.startswith("ROOT ")]
+                if not summary_lines:
+                    print(f"N={N}: no summary line", file=sys.stderr,
+                          flush=True)
+                    last_M = None
+                    continue
+                parts = summary_lines[-1].split()
                 if len(parts) < 6:
-                    print(f"N={N}: malformed gp output: {lines[-1][:80]}",
+                    print(f"N={N}: malformed gp output: "
+                          f"{summary_lines[-1][:80]}",
                           file=sys.stderr, flush=True)
                     last_M = None
                     continue
@@ -397,6 +428,24 @@ def main():
                 except ValueError:
                     w.writerow([N, M_str, "", "", K, U, Q, R])
                     last_M = None
+
+                # Roots emit (unconditional w.r.t. M cutoff). Block format
+                # matches roots/deg-NNNN.txt so plot_root_heatmap can read
+                # it directly. Header is the DB-style line for P_N (with
+                # M rounded to 72-digit DB format for consistency) when
+                # palindromic, else a simpler "# N=... M=..." string.
+                if roots_f is not None:
+                    M_db = round_to_db_format(M_str)
+                    header = db_line_for(a, d, sign, N, M_db, K, U, Q, R)
+                    if header is None:
+                        header = (f"N={N} M={M_db} K={K} U={U} Q={Q} R={R} "
+                                  "(non-palindromic)")
+                    roots_f.write(f"# {header}\n")
+                    for rl in root_lines:
+                        toks = rl.split(maxsplit=2)
+                        if len(toks) == 3:
+                            roots_f.write(f"{toks[1]} {toks[2]}\n")
+                    roots_f.write("\n")
 
                 # DB-emit logic — mirrors PSMM brute-force search:
                 #   - if irreducible AND 1.001 < M < 1.3: emit P directly
@@ -466,6 +515,8 @@ def main():
     finally:
         if db_f:
             db_f.close()
+        if roots_f:
+            roots_f.close()
 
     elapsed = time.time() - started
     print(f"\ndone: {n_done} N values processed in {elapsed/60:.1f} min",
