@@ -38,7 +38,37 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_EVEN, getcontext
 from pathlib import Path
+
+
+# Per doc/DB-FORMAT.md, AllKnownAdvanpix stores each Mahler measure as
+# "1." + exactly 72 fractional digits, rounded with ROUND_HALF_EVEN.
+DB_MAHLER_DIGITS = 72
+
+
+def round_to_db_format(M_str: str, digits: int = DB_MAHLER_DIGITS) -> str:
+    """Round a high-precision M string to `digits` fractional digits with
+    ROUND_HALF_EVEN, matching the DB format. No-op if already short."""
+    if "." not in M_str:
+        return M_str
+    int_part, frac = M_str.split(".", 1)
+    if len(frac) <= digits:
+        # Pad with trailing zeros if shorter than expected
+        if len(frac) < digits:
+            frac = frac + "0" * (digits - len(frac))
+        return int_part + "." + frac
+    getcontext().prec = max(len(int_part) + len(frac) + 4, digits + 8)
+    d = Decimal(M_str)
+    quant = Decimal("1." + "0" * digits)
+    rounded = d.quantize(quant, rounding=ROUND_HALF_EVEN)
+    s = str(rounded)
+    if "." in s:
+        ip, fp = s.split(".", 1)
+        if len(fp) < digits:
+            fp = fp + "0" * (digits - len(fp))
+        return ip + "." + fp
+    return s + "." + "0" * digits
 
 
 REPO = Path(__file__).resolve().parent.parent
@@ -189,17 +219,20 @@ def main():
             print(f"  deg {N} line {line_idx+1}: no output", file=sys.stderr)
             n_errors += 1
             continue
-        new_M = out_lines[-1]
+        new_M_raw = out_lines[-1]
 
         # Sanity: first 30 digits should match the old value
-        common = min(len(old_M), len(new_M), 30)
-        if old_M[:common] != new_M[:common]:
+        common = min(len(old_M), len(new_M_raw), 30)
+        if old_M[:common] != new_M_raw[:common]:
             print(f"  deg {N} line {line_idx+1}: PREFIX MISMATCH",
                   file=sys.stderr)
             print(f"    old: {old_M[:60]}", file=sys.stderr)
-            print(f"    new: {new_M[:60]}", file=sys.stderr)
+            print(f"    new: {new_M_raw[:60]}", file=sys.stderr)
             n_errors += 1
             continue
+
+        # Round to the DB format (72 fractional digits, ROUND_HALF_EVEN).
+        new_M = round_to_db_format(new_M_raw)
 
         # Replace M in the raw line (preserve trailing newline, separators).
         # IMPORTANT: re.match's default `$` doesn't capture the trailing
