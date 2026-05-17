@@ -48,8 +48,7 @@ import mpmath as mp
 
 
 def cyclotomic(n: int, x):
-    """Evaluate Phi_n(x) using sympy-style approach but inline for small n.
-       For our purposes n in {2, 3, 4, 5, 6, 7, 8, 9, 10, 12}."""
+    """Evaluate Phi_n(x) for n in {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}."""
     table = {
         2:  lambda x: x + 1,
         3:  lambda x: x*x + x + 1,
@@ -60,13 +59,14 @@ def cyclotomic(n: int, x):
         8:  lambda x: x**4 + 1,
         9:  lambda x: x**6 + x**3 + 1,
         10: lambda x: x**4 - x**3 + x**2 - x + 1,
+        11: lambda x: x**10 + x**9 + x**8 + x**7 + x**6 + x**5 + x**4 + x**3 + x**2 + x + 1,
         12: lambda x: x**4 - x**2 + 1,
     }
     return table[n](x)
 
 
 # Euler totient — small n only
-PHI = {2:1, 3:2, 4:2, 5:4, 6:2, 7:6, 8:4, 9:6, 10:4, 12:4}
+PHI = {2:1, 3:2, 4:2, 5:4, 6:2, 7:6, 8:4, 9:6, 10:4, 11:10, 12:4}
 
 
 def integrand(a: int, d: int):
@@ -156,12 +156,13 @@ def main():
             print("  L > 1.3 -> family CANNOT produce sub-1.3 polynomials")
         return
 
-    # Survey all 25 (a, d) pairs from sweep_ad.py's default
+    # Survey all valid (a, d) pairs in {2, .., 12} with phi(d) >= phi(a).
+    # Includes a == d (degenerate but well-defined: L = 1 since the polynomial
+    # is purely cyclotomic).
+    ns = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     pairs = [
-        (2,3), (2,5), (2,7), (2,8), (2,9), (2,10), (2,12),
-        (3,5), (3,7), (3,8), (3,9), (3,10), (3,12),
-        (4,5), (4,7), (4,8), (4,9), (4,10), (4,12),
-        (6,5), (6,7), (6,8), (6,9), (6,10), (6,12),
+        (a, d) for a in ns for d in ns
+        if PHI[d] >= PHI[a]
     ]
     print(f"Surveying {len(pairs)} (a, d) pairs at dps={args.dps}:")
     print(f"{'a':>3} {'d':>3} {'M(F) = exp(m(F))':>22}  flag")

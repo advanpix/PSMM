@@ -230,28 +230,40 @@ $$P_{a,d,k,s}(x) = \Phi_a(x)(x^k+1) + s \cdot x^{(\phi(a)+k-\phi(d))/2}\Phi_d(x)
 (Here $k$ is a perturbation index, not the polynomial degree — different
 $(a, d, k, s)$ choices yield polynomials of different degrees.)
 
-**Boyd–Lawton limit per family.** For each $(a, d)$ with $\phi(d) \geq \phi(a)$,
-the sequence $M(P_{a,d,k,s})$ as $k \to \infty$ converges to
-$L_{a,d} = \exp(m(F_{a,d}))$ where
+**Boyd–Lawton limit per family.** For each $(a, d)$ with
+$\phi(d) \geq \phi(a)$, the sequence $M(P_{a,d,k,s})$ as $k \to \infty$
+converges to $L_{a,d} = \exp(m(F_{a,d}))$ where
 $F_{a,d}(x, u) = \Phi_a(x) x^{\phi(d) - \phi(a)} u^2 + s \Phi_d(x) u + \Phi_a(x)$
 is the bivariate companion. The sign $s$ does not affect the limit
 (substitution $u \to -u$ leaves the Mahler measure invariant).
 Computed via the 1D Jensen reduction in
-[`tools/compute_boyd_lawton_family.py`](tools/compute_boyd_lawton_family.py):
+[`tools/compute_boyd_lawton_family.py`](tools/compute_boyd_lawton_family.py).
 
-| $(a, d)$ | $L$ | $(a, d)$ | $L$ | $(a, d)$ | $L$ | $(a, d)$ | $L$ | $(a, d)$ | $L$ |
-|---|---|---|---|---|---|---|---|---|---|
-| **(2, 3)** | **1.2554** | (2, 5) | 1.3321 | (2, 7) | 1.3883 | (2, 8) | 1.4098 | (2, 9) | 1.4497 |
-| (2, 10) | 1.9725 | (2, 12) | 1.3091 | (3, 5) | 1.3157 | (3, 7) | 1.3500 | (3, 8) | 1.3824 |
-| (3, 9) | 1.8067 | (3, 10) | 1.9558 | (3, 12) | 1.7404 | (4, 5) | 1.4227 | (4, 7) | 1.5326 |
-| (4, 8) | 1.5351 | (4, 9) | 1.4802 | (4, 10) | 1.4227 | (4, 12) | 1.8531 | (6, 5) | 1.9558 |
-| (6, 7) | 1.9901 | (6, 8) | 1.3824 | (6, 9) | 1.3946 | (6, 10) | 1.3157 | (6, 12) | 1.7404 |
+**M(P) limits L for each (a, d) family.** Rows: $a$. Columns: $d$.
+Blank cells: $\phi(d) < \phi(a)$ (excluded by the construction).
+Diagonal $a = d$: the polynomial factors into cyclotomics, so the
+limit is trivially $L = 1$. The only off-diagonal cell with $L < 1.3$
+is **(2, 3)** (bold) — the Max-U family.
 
-Only **(2, 3)** has $L < 1.3$. That family is the Max-U one analysed
-in detail above; large-$k$ entries of both signs are merged into
-`AllKnownAdvanpix`. The other 24 families converge to limits above the
-database's $M < 1.3$ coverage threshold and cannot contribute new
-sub-1.3 entries at large $k$.
+| $a$ \ $d$ | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+|---:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| **2**  | 1 | **1.2554** | 1.5351 | 1.3321 | 1.8531 | 1.3883 | 1.4098 | 1.4497 | 1.9725 | 1.3748 | 1.3091 |
+| **3**  |   | 1 | 1.4751 | 1.3157 | 2.0622 | 1.3500 | 1.3824 | 1.8067 | 1.9558 | 1.3875 | 1.7404 |
+| **4**  |   | 1.3405 | 1 | 1.4227 | 1.3405 | 1.5326 | 1.5351 | 1.4802 | 1.4227 | 1.4974 | 1.8531 |
+| **5**  |   |   |   | 1 |   | 1.3602 | 1.4819 | 1.5759 | 2.1497 | 1.3647 | 1.6402 |
+| **6**  |   | 2.0622 | 1.4751 | 1.9558 | 1 | 1.9901 | 1.3824 | 1.3946 | 1.3157 | 1.9653 | 1.7404 |
+| **7**  |   |   |   |   |   | 1 |   | 1.6713 |   | 1.3689 |   |
+| **8**  |   |   |   | 1.6126 |   | 1.6456 | 1 | 1.4299 | 1.6126 | 1.6226 | 1.3405 |
+| **9**  |   |   |   |   |   | 1.6247 |   | 1 |   | 1.6326 |   |
+| **10** |   |   |   | 2.1497 |   | 1.8807 | 1.4819 | 1.7032 | 1 | 2.0166 | 1.6402 |
+| **11** |   |   |   |   |   |   |   |   |   | 1 |   |
+| **12** |   |   |   | 1.7823 |   | 1.7896 | 1.4751 | 1.5738 | 1.7823 | 1.8552 | 1 |
+
+Among all 65 non-diagonal cells, only **(2, 3)** has $L < 1.3$. That
+family is the Max-U one analysed in detail above; large-$k$ entries of
+both signs are merged into `AllKnownAdvanpix`. Every other family
+converges to a limit above the database's $M < 1.3$ coverage threshold
+and cannot contribute new sub-1.3 entries at large $k$.
 
 We swept $a \in \{2, 3, 4, 6\}$, $d \in \{3, 5, 7, 8, 9, 10, 12\}$,
 $s \in \{-1, +1\}$, $k \in [5, 201]$ — factored each $P_{a,d,k,s}$ over
