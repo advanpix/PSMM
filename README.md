@@ -260,8 +260,8 @@ is **(2, 3)** (bold) — the Max-U family.
 | **12** |   |   |   | 1.7823 |   | 1.7896 | 1.4751 | 1.5738 | 1.7823 | 1.8552 | 1 |
 
 Among all 65 non-diagonal cells, only **(2, 3)** has $L < 1.3$. That
-family is the Max-U one analysed in detail above; large-$k$ entries of
-both signs are merged into `AllKnownAdvanpix`. Every other family
+family is the Max-U one analysed in detail above; entries at large $k$
+of both signs are merged into `AllKnownAdvanpix`. Every other family
 converges to a limit above the database's $M < 1.3$ coverage threshold
 and cannot contribute new sub-1.3 entries at large $k$.
 
