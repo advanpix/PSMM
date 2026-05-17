@@ -238,6 +238,78 @@ def _draw_family_panel(ax, roots: np.ndarray, label: str, color: str,
     ax.set_title(f"{top}\n{bottom}", fontsize=15, pad=12)
 
 
+def plot_zoom_panel(roots: np.ndarray, label: str, color: str,
+                    formula: str | None, limit_M: float | None,
+                    args, out_path: Path):
+    """Two side-by-side panels of ONE family: full unit-disk on the left,
+    a zoomed-in window on the right (showing the off-circle root pocket
+    in detail). Used for the Max-U family's tight cluster at Re ~ -1.
+
+    Layout: figure-level suptitle has the family identity, formula, count,
+    and L. Each panel just gets a short caption ("Full disk" / "Zoom: ...").
+    """
+    fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(17, 9),
+                                            dpi=args.dpi)
+    full_extent = args.disk_extent
+    theta = np.linspace(0, 2 * np.pi, 720)
+
+    # Left panel: full unit-disk
+    ax_left.grid(True, alpha=0.2, linewidth=0.4, zorder=0)
+    ax_left.plot(np.cos(theta), np.sin(theta),
+                 color="black", linestyle="--", linewidth=0.7, alpha=0.25,
+                 zorder=1)
+    ax_left.scatter(roots.real, roots.imag,
+                    s=args.point_size, c=color, alpha=args.alpha,
+                    linewidths=0, zorder=3)
+    ax_left.set_xlim(-full_extent, full_extent)
+    ax_left.set_ylim(-full_extent, full_extent)
+    ax_left.set_aspect("equal")
+    ax_left.set_xlabel(r"$\Re(r)$", fontsize=14)
+    ax_left.set_ylabel(r"$\Im(r)$", fontsize=14)
+    ax_left.tick_params(labelsize=12)
+    ax_left.set_title("Full unit disk", fontsize=15, pad=10)
+    # Outline the zoom rectangle on the left panel so the relationship is
+    # obvious to the reader.
+    rect_x = [args.zoom_xmin, args.zoom_xmax, args.zoom_xmax,
+              args.zoom_xmin, args.zoom_xmin]
+    rect_y = [args.zoom_ymin, args.zoom_ymin, args.zoom_ymax,
+              args.zoom_ymax, args.zoom_ymin]
+    ax_left.plot(rect_x, rect_y, color="black", linewidth=0.9,
+                 alpha=0.6, zorder=2)
+
+    # Right panel: zoom into the off-circle region
+    ax_right.grid(True, alpha=0.2, linewidth=0.4, zorder=0)
+    ax_right.plot(np.cos(theta), np.sin(theta),
+                  color="black", linestyle="--", linewidth=0.7, alpha=0.25,
+                  zorder=1)
+    ax_right.scatter(roots.real, roots.imag,
+                     s=args.zoom_point_size, c=color, alpha=args.alpha,
+                     linewidths=0, zorder=3)
+    ax_right.set_xlim(args.zoom_xmin, args.zoom_xmax)
+    ax_right.set_ylim(args.zoom_ymin, args.zoom_ymax)
+    ax_right.set_aspect("equal")
+    ax_right.set_xlabel(r"$\Re(r)$", fontsize=14)
+    ax_right.set_ylabel(r"$\Im(r)$", fontsize=14)
+    ax_right.tick_params(labelsize=12)
+    zoom_title = (rf"Zoom:  $\Re(r) \in [{args.zoom_xmin}, {args.zoom_xmax}]$,  "
+                  rf"$\Im(r) \in [{args.zoom_ymin}, {args.zoom_ymax}]$")
+    ax_right.set_title(zoom_title, fontsize=15, pad=10)
+
+    # Figure-level title carries the family identity.
+    if args.title:
+        suptitle = args.title
+    else:
+        top = f"{label}:  {formula}" if formula else label
+        bottom = f"{len(roots):,} off-circle roots"
+        if limit_M is not None:
+            bottom += rf",  $L = {limit_M:.4f}$"
+        suptitle = f"{top}\n{bottom}"
+    fig.suptitle(suptitle, fontsize=16, y=0.98)
+    plt.tight_layout(rect=[0, 0, 1, 0.93])
+    plt.savefig(out_path)
+    plt.close()
+
+
 def plot_two_family(roots_a: np.ndarray, label_a: str, color_a: str,
                     roots_b: np.ndarray, label_b: str, color_b: str,
                     args, out_path: Path):
@@ -485,6 +557,17 @@ def main():
                     help="LaTeX formula for family B (panel subtitle)")
     ap.add_argument("--point-size", type=float, default=3.5)
     ap.add_argument("--alpha", type=float, default=0.55)
+    # --zoom-panel: one family in two panels (full disk + zoom). For
+    # Max-U the default window crops to the Re ~ -1 crescent.
+    ap.add_argument("--zoom-panel", action="store_true",
+                    help="render one family in two side-by-side panels: "
+                         "full unit-disk on the left, zoomed-in window "
+                         "(--zoom-xmin/xmax/ymin/ymax) on the right.")
+    ap.add_argument("--zoom-xmin", type=float, default=-1.10)
+    ap.add_argument("--zoom-xmax", type=float, default=-0.90)
+    ap.add_argument("--zoom-ymin", type=float, default=-0.45)
+    ap.add_argument("--zoom-ymax", type=float, default=+0.45)
+    ap.add_argument("--zoom-point-size", type=float, default=1.5)
     args = ap.parse_args()
 
     entries = load_db_entries(REPO / "AllKnownAdvanpix")
@@ -495,6 +578,29 @@ def main():
         REPO / "doc" / "new_finds_d_only_pn_extended.txt",
         # part-2 entries don't have roots in roots/ yet — skip
     ]
+
+    # ---- Single-family zoom-panel branch ---------------------------
+    if args.zoom_panel:
+        sub = select_subset(entries, args.subset, args.limit, family_files)
+        roots = load_roots_for_subset(sub, REPO / "roots")
+        if args.filter_unit > 0:
+            before = len(roots)
+            roots = filter_near_unit(roots, args.filter_unit)
+            print(f"unit-circle filter eps={args.filter_unit}: "
+                  f"{before} -> {len(roots)} roots", file=sys.stderr)
+        if len(roots) == 0:
+            raise SystemExit("no roots after filtering")
+        out_path = (Path(args.output) if args.output
+                    else REPO / "images" /
+                         f"root-heatmap-{args.subset}-zoom.png")
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        # Use family-A label/color/limit/formula by default for the
+        # Max-U case; CLI override possible via those flags.
+        plot_zoom_panel(roots, args.family_a_label, args.family_a_color,
+                        args.family_a_formula or None,
+                        args.family_a_limit, args, out_path)
+        print(f"wrote {out_path}", file=sys.stderr)
+        return
 
     # ---- Two-family overlay branch ---------------------------------
     if args.two_family:

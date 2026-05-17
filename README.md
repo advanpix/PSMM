@@ -214,11 +214,16 @@ $M(P_N)$ stays $\geq 1.2554\ldots$ in the limit, with the $N=22$ member
 at $1.18837$ being the closest single case to Lehmer's bound that the
 family achieves.
 
-![Parametric family convergence](images/parametric_family_M_vs_m.png)
+![Mahler-measure convergence for two parametric families](images/two-family-convergence.png)
 
-(Reproduce with [`tools/scan_parametric_family.py`](tools/scan_parametric_family.py)
-and [`tools/plot_parametric_family.py`](tools/plot_parametric_family.py). The
-plot's $x$-axis labels by the perturbation index $m = N - 1$.)
+Each family $(a, d)$ has its own Boyd-Lawton limit $L_{a,d}$. The red
+trace shows the Max-U family $(2, 3, -)$ above, settling onto
+$L_{(2,3)} = 1.2554$; the blue trace shows the next-closest non-diagonal
+family $(2, 12, -)$ from the generalisation below, settling onto
+$L_{(2,12)} = 1.3091$. Reproduce with
+[`tools/scan_pn_convergence.py`](tools/scan_pn_convergence.py) per
+family and overlay via
+[`tools/plot_two_family_convergence.py`](tools/plot_two_family_convergence.py).
 
 ### Generalising to two cyclotomic parameters
 
