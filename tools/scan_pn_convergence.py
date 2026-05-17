@@ -50,10 +50,43 @@ import csv
 import subprocess
 import sys
 import time
+from decimal import Decimal, ROUND_HALF_EVEN, getcontext
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parent.parent
+
+# AllKnownAdvanpix stores M as 1. + exactly 72 fractional digits, rounded
+# ROUND_HALF_EVEN. See doc/DB-FORMAT.md. Every M written into a DB-format
+# line by this tool must pass through round_to_db_format() first; we round
+# at the source so the merge pipeline is a single step with no follow-up
+# precision-patch.
+DB_MAHLER_DIGITS = 72
+
+
+def round_to_db_format(M_str: str, digits: int = DB_MAHLER_DIGITS) -> str:
+    """Round a high-precision M string to `digits` fractional digits with
+    ROUND_HALF_EVEN, matching AllKnownAdvanpix format. Pads with trailing
+    zeros if the input is shorter than `digits` (the caller is responsible
+    for using a precision high enough that this padding doesn't happen)."""
+    if "." not in M_str:
+        return M_str
+    int_part, frac = M_str.split(".", 1)
+    if len(frac) <= digits:
+        if len(frac) < digits:
+            frac = frac + "0" * (digits - len(frac))
+        return int_part + "." + frac
+    getcontext().prec = max(len(int_part) + len(frac) + 4, digits + 8)
+    d = Decimal(M_str)
+    quant = Decimal("1." + "0" * digits)
+    rounded = d.quantize(quant, rounding=ROUND_HALF_EVEN)
+    s = str(rounded)
+    if "." in s:
+        ip, fp = s.split(".", 1)
+        if len(fp) < digits:
+            fp = fp + "0" * (digits - len(fp))
+        return ip + "." + fp
+    return s + "." + "0" * digits
 
 # Corrected Boyd-Lawton limit for the Max-U family P_N (a=2,d=3,sign=-1)
 # (see tools/compute_boyd_lawton.py for the 1D Jensen-reduction proof).
@@ -370,8 +403,12 @@ def main():
                 #   - if reducible AND M < 1.3: factor P, extract each
                 #     non-cyclotomic factor F with 1.001 < M(F) < 1.3
                 if db_f and ok and 1.001 < M_f < 1.3:
+                    # Round M to the DB's 72-digit format AT THE EMIT STEP,
+                    # so the merge pipeline doesn't need a precision-patch
+                    # follow-up.
+                    M_db = round_to_db_format(M_str)
                     if irr:
-                        db_line = db_line_for(a, d, sign, N, M_str,
+                        db_line = db_line_for(a, d, sign, N, M_db,
                                               K, U, Q, R)
                         if db_line is None:
                             print(f"N={N}: non-palindromic, skipping DB emit",
@@ -399,7 +436,15 @@ def main():
                             for ln in proc2.stdout.splitlines():
                                 ln = ln.strip()
                                 if ln.startswith("FACTOR "):
-                                    db_f.write(ln[len("FACTOR "):] + "\n")
+                                    # gp built a DB-format line whose M
+                                    # field is at PARI realprecision. Round
+                                    # it to 72 digits before emitting.
+                                    body = ln[len("FACTOR "):]
+                                    toks = body.split(maxsplit=2)
+                                    if len(toks) >= 3:
+                                        toks[1] = round_to_db_format(toks[1])
+                                        body = " ".join(toks)
+                                    db_f.write(body + "\n")
                                     n_factors_emitted += 1
                                     n_db_emitted += 1
                                 elif ln.startswith("SKIP_"):
