@@ -201,17 +201,27 @@ def main():
             n_errors += 1
             continue
 
-        # Replace M in the raw line (preserve trailing newline, separators)
+        # Replace M in the raw line (preserve trailing newline, separators).
+        # IMPORTANT: re.match's default `$` doesn't capture the trailing
+        # '\n', so we strip it, do the replacement, then put it back.
+        # Forgetting this merges patched lines with the next line.
         raw = raw_lines[line_idx]
-        # The first whitespace block separates degree and M; preserve it.
-        m = re.match(r"^(\s*\d+\s+)(\S+)(\s+.*)$", raw)
+        trailing = ""
+        if raw.endswith("\r\n"):
+            body, trailing = raw[:-2], "\r\n"
+        elif raw.endswith("\n"):
+            body, trailing = raw[:-1], "\n"
+        else:
+            body = raw
+        m = re.match(r"^(\s*\d+\s+)(\S+)(\s.*)?$", body)
         if m is None:
             print(f"  deg {N} line {line_idx+1}: parse error",
                   file=sys.stderr)
             n_errors += 1
             continue
-        prefix, _old_M_field, suffix = m.group(1), m.group(2), m.group(3)
-        raw_lines[line_idx] = prefix + new_M + suffix
+        prefix = m.group(1)
+        suffix = m.group(3) or ""
+        raw_lines[line_idx] = prefix + new_M + suffix + trailing
 
         n_done += 1
         if n_done % 10 == 0 or n_done == len(candidates):
