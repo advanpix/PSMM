@@ -241,8 +241,10 @@ def main():
                     help="maximum N (default 2002)")
     ap.add_argument("--n-step", type=int, default=2,
                     help="step in N (default 2 — every even value)")
-    ap.add_argument("--precision", type=int, default=40,
-                    help="PARI realprecision in decimal digits (default 40)")
+    ap.add_argument("--precision", type=int, default=120,
+                    help="PARI realprecision in decimal digits (default 120 "
+                         "to fully populate the DB's 72-digit Mahler measure "
+                         "with safety margin)")
     ap.add_argument("--timeout", type=int, default=1800,
                     help="per-call gp timeout in seconds (default 1800)")
     ap.add_argument("--limit-m", type=str, default=BOYD_LAWTON_LIMIT_DEFAULT,
