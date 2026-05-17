@@ -48,7 +48,7 @@ import mpmath as mp
 
 
 def cyclotomic(n: int, x):
-    """Evaluate Phi_n(x) for n in {2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}."""
+    """Evaluate Phi_n(x) for n in {2, ..., 15}."""
     table = {
         2:  lambda x: x + 1,
         3:  lambda x: x*x + x + 1,
@@ -61,12 +61,16 @@ def cyclotomic(n: int, x):
         10: lambda x: x**4 - x**3 + x**2 - x + 1,
         11: lambda x: x**10 + x**9 + x**8 + x**7 + x**6 + x**5 + x**4 + x**3 + x**2 + x + 1,
         12: lambda x: x**4 - x**2 + 1,
+        13: lambda x: x**12 + x**11 + x**10 + x**9 + x**8 + x**7 + x**6 + x**5 + x**4 + x**3 + x**2 + x + 1,
+        14: lambda x: x**6 - x**5 + x**4 - x**3 + x**2 - x + 1,
+        15: lambda x: x**8 - x**7 + x**5 - x**4 + x**3 - x + 1,
     }
     return table[n](x)
 
 
 # Euler totient — small n only
-PHI = {2:1, 3:2, 4:2, 5:4, 6:2, 7:6, 8:4, 9:6, 10:4, 11:10, 12:4}
+PHI = {2:1, 3:2, 4:2, 5:4, 6:2, 7:6, 8:4, 9:6, 10:4, 11:10, 12:4,
+       13:12, 14:6, 15:8}
 
 
 def integrand(a: int, d: int):
@@ -156,10 +160,10 @@ def main():
             print("  L > 1.3 -> family CANNOT produce sub-1.3 polynomials")
         return
 
-    # Survey all valid (a, d) pairs in {2, .., 12} with phi(d) >= phi(a).
+    # Survey all valid (a, d) pairs in {2, .., 15} with phi(d) >= phi(a).
     # Includes a == d (degenerate but well-defined: L = 1 since the polynomial
     # is purely cyclotomic).
-    ns = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    ns = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     pairs = [
         (a, d) for a in ns for d in ns
         if PHI[d] >= PHI[a]
