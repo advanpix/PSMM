@@ -231,8 +231,24 @@ def main():
                   f"({rate:.2f}/s, {elapsed/60:.1f} min)",
                   file=sys.stderr, flush=True)
 
+    # Sanity: line count of the spliced content must equal the original.
+    # An older version of the splicer ate the trailing newline of each
+    # patched line and silently merged it with the next line, destroying
+    # one polynomial per patch (commit 10c1f2b). Refuse to write if the
+    # count doesn't match.
+    out_text = "".join(raw_lines)
+    out_line_count = out_text.count("\n") + (0 if out_text.endswith("\n") else 1)
+    src_text = src.read_text()
+    src_line_count = src_text.count("\n") + (0 if src_text.endswith("\n") else 1)
+    if out_line_count != src_line_count:
+        raise SystemExit(
+            f"ABORT: line count would change from {src_line_count} to "
+            f"{out_line_count}. Refusing to write a corrupted file. "
+            f"Original retained at {backup}."
+        )
+
     # Write back
-    src.write_text("".join(raw_lines))
+    src.write_text(out_text)
     elapsed = time.time() - started
     print(f"\ndone: {n_done} entries patched, {n_errors} errors, "
           f"{elapsed/60:.1f} min wall.", file=sys.stderr)
