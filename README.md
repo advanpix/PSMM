@@ -59,18 +59,29 @@ one of the oldest open questions in number theory.
 
 ## Results
 
-The classical reference is Mossinghoff's `Known180` list (8,438
-polynomials, all with degree ≤ 180). **Our program found 40,176 new
-polynomials**: 96 at degree ≤ 180 (in degrees 174–180, where Known180
-was incomplete) and 40,080 at degree > 180. Sorted by Mahler measure,
-**88% of the top 10,000 polynomials are new finds from our search**.
+The classical reference for polynomials with $M(P) < 1.3$ is
+Mossinghoff's [`Known180`](Known180) list — 8,438 polynomials, all with
+degree ≤ 180.
 
-Overall, the `AllKnownAdvanpix` database contains **48,614 primitive
-irreducible reciprocal polynomials** with Mahler measure $M(P) < 1.3$.
-Of these, 48,341 came from exhaustive PSMM search up to degree 456; the
-remaining 273 were derived analytically from the
+Our exhaustive search program found **40,176 new polynomials**: 96 at
+degree ≤ 180 that Known180 missed, and 40,080 at degrees > 180. Sorted
+by Mahler measure, **88% of the top 10,000 polynomials are new finds
+from our search**.
+
+Overall, the new [`AllKnownAdvanpix`](AllKnownAdvanpix) database
+contains all **48,614 primitive irreducible reciprocal polynomials**
+known with $M(P) < 1.3$. Of these, 48,341 came from exhaustive PSMM
+search up to degree 456; the remaining 273 were derived analytically
+from the
 [Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
 and extend the database to degree 1002.
+
+Each entry records the Mahler measure with 72-digit precision and
+includes the structural counts $\mathrm{NNZ}, H, L, K, U, Q, R$.
+Known180 stores only 13 digits of the Mahler measure. At higher degrees
+this causes collisions — distinct polynomials whose Mahler measures
+match in the first 10 or 11 digits appear identical in Known180. See
+[`psmm.cpp`](psmm.cpp#L33-L86) for examples.
 
 ### Definitions
 
