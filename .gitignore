@@ -46,3 +46,4 @@ __pycache__/
 
 # Database backups (created before psmm -merge)
 AllKnownAdvanpix.bak.*
+.private/
