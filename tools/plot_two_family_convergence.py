@@ -93,6 +93,16 @@ def main():
     print(f"family B: {len(xs_b):,} points")
 
     fig, ax = plt.subplots(figsize=(13, 7.5), dpi=args.dpi)
+    # Dashed limit lines first (low z-order, faint) so the Mahler-measure
+    # scatter overlays them and stays the visual focus.
+    ax.axhline(args.limit_a, color=args.color_a, linestyle="--",
+               linewidth=0.9, alpha=0.25,
+               label=f"$L_{{(2,3)}}$ = {args.limit_a:.4f}",
+               zorder=1)
+    ax.axhline(args.limit_b, color=args.color_b, linestyle="--",
+               linewidth=0.9, alpha=0.25,
+               label=f"$L_{{(2,12)}}$ = {args.limit_b:.4f}",
+               zorder=1)
     ax.scatter(xs_a, ys_a, s=10, c=args.color_a, alpha=0.6,
                linewidths=0,
                label=f"{args.label_a}  ({len(xs_a):,} N values)",
@@ -101,14 +111,6 @@ def main():
                linewidths=0,
                label=f"{args.label_b}  ({len(xs_b):,} N values)",
                zorder=3)
-    ax.axhline(args.limit_a, color=args.color_a, linestyle="--",
-               linewidth=1.3, alpha=0.7,
-               label=f"$L_{{(2,3)}}$ = {args.limit_a:.4f}",
-               zorder=2)
-    ax.axhline(args.limit_b, color=args.color_b, linestyle="--",
-               linewidth=1.3, alpha=0.7,
-               label=f"$L_{{(2,12)}}$ = {args.limit_b:.4f}",
-               zorder=2)
     ax.set_xlabel(r"$N$  (polynomial degree)", fontsize=14)
     ax.set_ylabel(r"$M(P_N)$", fontsize=14)
     ax.set_title("Mahler-measure convergence for two parametric families",
