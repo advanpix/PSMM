@@ -179,6 +179,15 @@ So roughly **13 of every 15 roots sit on the unit circle**, irrespective
 of $N$. The $N=1002$ member realises $U=868$ — the largest $U$ in the
 database, but the family extends to arbitrary $N$ and $U \to \infty$.
 
+[![Max-U family off-circle roots](images/maxu-zoom.png)](images/maxu-zoom-hires.png)
+
+Off-circle roots of every $P_N$ in the family at $N \in [458, 1174]$,
+filtered to drop roots within $10^{-3.3}$ of $|r|=1$. The left panel
+shows the full unit disk — the entire perturbation locus is the small
+red sliver near $r = -1$. The right panel zooms in on that pocket to
+reveal a thin lens of complex Salem roots flanking a tight spine of
+real-axis roots. (Click for higher resolution.)
+
 #### Analytic limit (Boyd–Lawton theorem)
 
 The convergence of $M(P_N)$ as $N \to \infty$ is **not coincidental**.

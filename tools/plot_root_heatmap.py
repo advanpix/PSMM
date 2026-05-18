@@ -268,14 +268,13 @@ def plot_zoom_panel(roots: np.ndarray, label: str, color: str,
     ax_left.set_ylabel(r"$\Im(r)$", fontsize=14)
     ax_left.tick_params(labelsize=12)
     ax_left.set_title("Full unit disk", fontsize=15, pad=10)
-    # Outline the zoom rectangle on the left panel so the relationship is
-    # obvious to the reader.
-    rect_x = [args.zoom_xmin, args.zoom_xmax, args.zoom_xmax,
-              args.zoom_xmin, args.zoom_xmin]
-    rect_y = [args.zoom_ymin, args.zoom_ymin, args.zoom_ymax,
-              args.zoom_ymax, args.zoom_ymin]
-    ax_left.plot(rect_x, rect_y, color="black", linewidth=0.9,
-                 alpha=0.6, zorder=2)
+    if args.zoom_rect:
+        rect_x = [args.zoom_xmin, args.zoom_xmax, args.zoom_xmax,
+                  args.zoom_xmin, args.zoom_xmin]
+        rect_y = [args.zoom_ymin, args.zoom_ymin, args.zoom_ymax,
+                  args.zoom_ymax, args.zoom_ymin]
+        ax_left.plot(rect_x, rect_y, color="black", linewidth=0.9,
+                     alpha=0.6, zorder=2)
 
     # Right panel: zoom into the off-circle region
     ax_right.grid(True, alpha=0.2, linewidth=0.4, zorder=0)
@@ -568,6 +567,10 @@ def main():
     ap.add_argument("--zoom-ymin", type=float, default=-0.45)
     ap.add_argument("--zoom-ymax", type=float, default=+0.45)
     ap.add_argument("--zoom-point-size", type=float, default=1.5)
+    ap.add_argument("--zoom-rect", action="store_true",
+                    help="draw the zoom window outline on the left panel "
+                         "(default off; the right-panel title carries the "
+                         "range, which is usually enough)")
     args = ap.parse_args()
 
     entries = load_db_entries(REPO / "AllKnownAdvanpix")
