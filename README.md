@@ -69,12 +69,12 @@ by Mahler measure, **88% of the top 10,000 polynomials are new finds
 from our search**.
 
 Overall, the new [`AllKnownAdvanpix`](AllKnownAdvanpix) database
-contains all **48,861 primitive irreducible reciprocal polynomials**
+contains all **49,383 primitive irreducible reciprocal polynomials**
 known with $M(P) < 1.3$. Of these, 48,341 came from exhaustive PSMM
-search up to degree 456; the remaining 520 were derived analytically
+search up to degree 456; the remaining 1,042 were derived analytically
 from the
 [Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
-and extend the database to degree 1500.
+and its sign-twin, and extend the database to degree 1500.
 
 Each entry records the Mahler measure with 72-digit precision and
 includes the structural counts $\mathrm{NNZ}, H, L, K, U, Q, R$.
@@ -356,7 +356,7 @@ typeset in LaTeX:
 ### Closest Mahler-measure pair
 
 A natural question for any large set of algebraic numbers is *how close
-together can two of them be?* Scanning all 48,861 entries in
+together can two of them be?* Scanning all 49,383 entries in
 `AllKnownAdvanpix`, the two polynomials whose Mahler measures differ by
 the **smallest amount** are:
 
@@ -393,7 +393,7 @@ Reproduce with `./build/psmm -analyze=AllKnownAdvanpix` (look for the line
 
 ### Database-wide verification
 
-Every one of the **48,861 polynomials** in `AllKnownAdvanpix` has been
+Every one of the **49,383 polynomials** in `AllKnownAdvanpix` has been
 re-verified independently with [PARI/GP](https://pari.math.u-bordeaux.fr/):
 irreducibility over $\mathbb{Z}$, Mahler measure agreement with the
 stored 72-digit value, and self-consistent root counts $(K, U, Q, R)$
