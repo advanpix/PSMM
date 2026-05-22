@@ -41,12 +41,13 @@ one of the oldest open questions in number theory.
 **Findings & results**
 
 - [Definitions](#definitions)
-- [Record holders](#record-holders)
-- [The Max-U family — sparsest polynomials with most roots on |z|=1](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
-- [Generalising to two cyclotomic parameters](#generalising-to-two-cyclotomic-parameters)
-- [Densest extremal polynomials](#densest-extremal-polynomials)
+- [Two convergence loci below 1.3](#two-convergence-loci-below-13)
+- [The 7-term cyclotomic family (L = 1.2554)](#the-7-term-cyclotomic-family-l--12554)
+- [The 5-term Salem family (L ≈ 1.2857)](#the-5-term-salem-family-l--12857)
+- [Generalising via cyclotomic perturbation](#generalising-via-cyclotomic-perturbation)
 - [Closest Mahler-measure pair](#closest-mahler-measure-pair)
 - [Database-wide verification](#database-wide-verification)
+- [Future work](#future-work)
 
 **Practical guide**
 
@@ -59,29 +60,31 @@ one of the oldest open questions in number theory.
 
 ## Results
 
-The classical reference for polynomials with $M(P) < 1.3$ is
-Mossinghoff's [`Known180`](Known180) list — 8,438 polynomials, all with
-degree ≤ 180.
+The [`AllKnownAdvanpix`](AllKnownAdvanpix) database catalogues **52,730
+primitive irreducible reciprocal integer polynomials** with small Mahler
+measure. The project name says *small* — not "below 1.3" — and the DB
+reflects that:
 
-Our exhaustive search program found **40,262 new polynomials**: 96 at
-degree ≤ 180 that Known180 missed, and 40,166 at degrees > 180. Sorted
-by Mahler measure, **88% of the top 10,000 polynomials are new finds
-from our search**.
-
-Overall, the new [`AllKnownAdvanpix`](AllKnownAdvanpix) database
-contains all **51,032 primitive irreducible reciprocal polynomials**
-known with $M(P) < 1.3$. Of these, 48,341 came from exhaustive PSMM
-search up to degree 456; the remaining 2,691 came from analytical
-scans of two parametric families — the
-[Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
-(and its sign-twin) and the 5-term reciprocal Salem family — and
-extend the database to degree 1500.
+- **52,234 entries with $M(P) < 1.3$**, the historical research region.
+  Of these, 48,341 came from exhaustive PSMM brute force ($H \le 1$,
+  $\mathrm{NNZ} \le 3$, $N \le 456$); the rest came from analytical
+  extensions and reducible-case factor-extracts of identified parametric
+  families up to $N = 1500$.
+- **496 entries with $M(P) \in [1.3, 1.5]$**, catalogued
+  opportunistically from parametric scans (not exhaustive in this
+  region). See [`doc/SCOPE.md`](doc/SCOPE.md) for the full M-range
+  coverage policy.
 
 Each entry records the Mahler measure with 72-digit precision and
 includes the structural counts $\mathrm{NNZ}, H, L, K, U, Q, R$.
-Known180 stores only 13 digits of the Mahler measure. At higher degrees
-this causes collisions — distinct polynomials whose Mahler measures
-match in the first 10 or 11 digits appear identical in Known180. See
+
+Compared to Mossinghoff's [`Known180`](Known180) list — 8,438
+polynomials with $M(P) < 1.3$ and degree $\le 180$ — `AllKnownAdvanpix`
+adds **96 new entries at $N \le 180$** that Known180 missed, plus tens
+of thousands of new finds at $N > 180$. Known180 stores only 13 digits
+of the Mahler measure; at higher degrees this causes collisions —
+distinct polynomials whose Mahler measures match in the first 10 or 11
+digits appear identical in Known180. See
 [`psmm.cpp`](psmm.cpp#L33-L86) for examples.
 
 ### Definitions
@@ -111,38 +114,46 @@ $$2K + U = N, \qquad Q + R = 2K.$$
 Storage in `AllKnownAdvanpix` is by half-coefficients $(a_0, a_1, \ldots, a_{N/2})$;
 the full polynomial is recovered by reciprocity $a_k = a_{N-k}$.
 
-### Record holders
+### Two convergence loci below 1.3
 
-| Record | Value | Origin | Degree | M(P) | NNZ | H | L | K | U | Q | R |
-|---|---:|:---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| Smallest M (Lehmer) | M &asymp; 1.17628 | Known180 | 10 | 1.17628… | 4 | 1 | 9 | 1 | 8 | 0 | 2 |
-| Most real non-unity | R = 4 | Known180 | 20 | 1.25363… | 8 | 1 | 17 | 2 | 16 | 0 | 4 |
-| Largest height | H = 29 | **New** | 348 | 1.25431… | 168 | 29 | 3657 | 40 | 268 | 80 | 0 |
-| Most non-zero coeffs | NNZ = 212 | **New** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
-| Largest length | L = 4173 | **New** | 432 | 1.25541… | 212 | 23 | 4173 | 42 | 348 | 84 | 0 |
-| Most roots outside &#124;z&#124;=1 | K = 76 | **New** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
-| Most complex non-unity | Q = 152 | **New** | 452 | 1.28530… | 151 | 1 | 303 | 76 | 300 | 152 | 0 |
+[![M(P) vs degree, NNZ-stratified](images/db-bands.png)](images/db-bands-hires.png)
 
-Five of the seven category records are new discoveries — they live at
-degrees 348, 432, and 452, well above the 180-degree boundary of the
-prior literature. The two records inside the classical regime (Lehmer's
-M-record at degree 10, and the R-record at degree 20) are pre-existing
-historical entries included for completeness.
+Plotting $M(P)$ against $N$ for every entry with $N \le 456$ and
+$M < 1.3$ reveals **exactly two horizontal accumulation bands**, at
+$M = 1.2554$ and $M = 1.2857$. Both bands sharpen as $N$ grows and
+become indistinguishable from horizontal lines beyond $N \approx 200$.
+NNZ stratification (sparse $\le 3$ in blue, dense $> 3$ in red) shows
+that the dense entries — almost all of them factor-extracts of
+reducible members of two specific parametric families — sit in the
+*same* two bands. They inherit each family's limit by construction.
 
-There is no entry for "most roots on $|z|=1$" because that record is held
-by an *infinite parametric family*, not a single polynomial — see
-[The Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
-below.
+Each band corresponds to a parametric family whose Mahler measure
+converges to a known **Boyd-Lawton limit** as the degree grows. The
+two families are characterised in detail in the next two subsections;
+their full inventory (formulas, bivariate companions, DB counts) is in
+[`doc/FAMILIES.md`](doc/FAMILIES.md).
 
-### The Max-U family — sparsest polynomials with most roots on $|z|=1$
+**Scope of the empirical claim.** This is a property of the corner of
+coefficient space we have searched: alphabet $\\{-1, 0, 1\\}$,
+$\mathrm{NNZ} \le 3$, brute force to $N \le 456$, plus analytical
+extension of the two identified families to $N \le 1500$ and
+factor-extracts of their reducible members. Whether the two-loci
+picture survives at higher height, larger NNZ, or higher degree is the
+open question driving [Future work](#future-work) below.
 
-Among the polynomials in our database, an unusual class stands out: **very
-sparse five-term reciprocals where almost all roots sit on the unit
-circle**. They follow a single template, parameterised by even degree $N$:
+### The 7-term cyclotomic family (L = 1.2554)
 
-$$P_N(x) = (x+1)(x^{N-1}+1) - x^{N/2-1}\Phi_3(x), \qquad \Phi_3(x) = x^2+x+1, \quad N \text{ even}, \quad N \geq 6.$$
+The first family is a **single template parameterised by even degree**
+$N$, perturbing a pure cyclotomic background by a sparse $\Phi_3$
+term:
 
-Four illustrative members:
+$$P_N(x) = (x + 1)(x^{N-1} + 1) - x^{N/2 - 1}\,\Phi_3(x), \qquad \Phi_3(x) = x^2 + x + 1, \quad N \text{ even}, \quad N \ge 6.$$
+
+Each $P_N$ has exactly **7 non-zero coefficients** regardless of
+$N$ — three from $(x+1)(x^{N-1}+1)$ at positions $0, 1, N-1, N$ (two
+of these coincide for the leading and constant terms), three from the
+$\Phi_3$ perturbation at positions $N/2 - 1, N/2, N/2 + 1$. Four
+illustrative members:
 
 | $N$ | $P_N(x)$ | $M(P_N)$ |
 |---:|---|---|
@@ -151,43 +162,47 @@ Four illustrative members:
 | 456 | $x^{456} + x^{455} - x^{229} - x^{228} - x^{227} + x + 1$ | $1.25491\ldots$ |
 | 1002 | $x^{1002} + x^{1001} - x^{502} - x^{501} - x^{500} + x + 1$ | $1.25553\ldots$ |
 
-The $N=22$ member is special: $P_{22}$ factors as $\Phi_{12}(x) \cdot R_{18}(x)$,
-where $R_{18}$ is the **second-smallest known Salem polynomial**
-($M \approx 1.18837$, just above Lehmer's $1.17628$). It is the entry
-`18 1.188368…` already present in `AllKnownAdvanpix`.
+The $N = 22$ member factors as $\Phi_{12}(x) \cdot R_{18}(x)$, where
+$R_{18}$ is the **second-smallest known Salem polynomial**
+($M \approx 1.18837$, just above Lehmer's $1.17628$); it appears in the
+DB as the entry `18 1.188368…`. The $N = 456$ member is the
+polynomial PSMM's brute-force search originally surfaced — three
+non-zero half-coefficients and yet $U = 396$ roots on the unit
+circle. Recognising the template extended the family analytically to
+arbitrary $N$.
 
-The $N=456$ member is the polynomial PSMM's brute-force search originally
-surfaced — three non-zero half-coefficients and yet $U=396$ roots on the
-unit circle. Inspecting its structure revealed the template above; we then
-computed every $P_N$ for even $N \in [6, 1002]$ and merged the new finds
-back into the database.
-
-**Structural decomposition.** Each $P_N$ is the cyclotomic product
-$(x+1)(x^{N-1}+1)$ perturbed by a single sparse $\Phi_3$ term. The first
-factor is a product of cyclotomic polynomials — all $N$ of its roots sit
-on the unit circle. The single perturbation $-x^{N/2-1}\Phi_3(x)$, placed
-at the half-degree, pushes a small number of roots off the circle into
-Salem quadruplets (and occasionally one real reciprocal pair), leaving
-the rest on $|z|=1$.
+**Structural decomposition.** $P_N$ is the cyclotomic product
+$(x + 1)(x^{N-1} + 1)$ perturbed by a single sparse $\Phi_3$ term. The
+first factor is a product of cyclotomic polynomials — all $N$ of its
+roots sit on the unit circle. The perturbation
+$-x^{N/2 - 1}\Phi_3(x)$, placed at the half-degree, pushes a small
+number of roots off the circle into Salem quadruplets (and occasionally
+one real reciprocal pair), leaving the rest on $|z|=1$.
 
 **Empirical scaling.** Across all $N \in [6, 1002]$ we computed, the
-count of off-circle roots scales linearly with $N$ at a remarkably constant
-rate:
+count of off-circle roots scales linearly with $N$ at a remarkably
+constant rate:
 
 $$\frac{K}{N} \approx 0.067 \approx \frac{1}{15}, \qquad \frac{U}{N} \approx \frac{13}{15}.$$
 
-So roughly **13 of every 15 roots sit on the unit circle**, irrespective
-of $N$. The $N=1002$ member realises $U=868$ — the largest $U$ in the
-database, but the family extends to arbitrary $N$ and $U \to \infty$.
+So roughly **13 of every 15 roots sit on the unit circle**,
+irrespective of $N$. (Historically this is why this family was called
+"Max-U" — its members have the highest fraction of roots on the unit
+circle in the DB.)
 
-[![Max-U family off-circle roots](images/maxu-zoom.png)](images/maxu-zoom-hires.png)
+[![Family roots, off-circle pocket](images/maxu-zoom.png)](images/maxu-zoom-hires.png)
 
 Off-circle roots of every $P_N$ in the family at $N \in [458, 1174]$,
 filtered to drop roots within $10^{-3.3}$ of $|r|=1$. The left panel
 shows the full unit disk — the entire perturbation locus is the small
-red sliver near $r = -1$. The right panel zooms in on that pocket to
-reveal a thin lens of complex Salem roots flanking a tight spine of
-real-axis roots. (Click for higher resolution.)
+red sliver near $r = -1$. The right panel zooms in to reveal a thin
+lens of complex Salem roots flanking a tight spine of real-axis roots.
+(Click for higher resolution.)
+
+**Sign twin.** Flipping the sign of the $\Phi_3$ perturbation gives
+the twin family $(x + 1)(x^{N-1} + 1) + x^{N/2 - 1}\Phi_3(x)$. By
+Mahler-measure sign invariance both signs share $L = 1.2554$, and both
+are merged into the DB.
 
 #### Analytic limit (Boyd–Lawton theorem)
 
@@ -195,20 +210,18 @@ The convergence of $M(P_N)$ as $N \to \infty$ is **not coincidental**.
 The family is a univariate monomial substitution into the bivariate
 polynomial
 
-$$F(x, u) = x(x+1) u^2 - \Phi_3(x) u + (x+1),$$
+$$F(x, u) = x(x + 1)\,u^2 - \Phi_3(x)\,u + (x + 1),$$
 
-obtained by setting $u = x^{N/2-1}$ so that $x^{N-1} = x \cdot u^2$. By
-the **Boyd–Lawton theorem** (Boyd 1981, Lawton 1983), the Mahler measure
-of the univariate family converges to the (logarithmic) Mahler measure of
-the bivariate polynomial:
+obtained by setting $u = x^{N/2 - 1}$ so that $x^{N - 1} = x \cdot u^2$.
+By the **Boyd–Lawton theorem** (Boyd 1981, Lawton 1983), the Mahler
+measure of the univariate family converges to the (logarithmic) Mahler
+measure of the bivariate polynomial:
 
 $$\lim_{N \to \infty} M(P_N) = \exp\bigl(m(F)\bigr), \qquad m(F) = \frac{1}{(2\pi)^2}\!\int_0^{2\pi}\!\!\int_0^{2\pi} \log\bigl|F(e^{i\theta_1}, e^{i\theta_2})\bigr| d\theta_1 d\theta_2.$$
 
 Numerical evaluation (via the Jensen-lemma reduction to a 1D integral —
 see [`tools/compute_boyd_lawton.py`](tools/compute_boyd_lawton.py))
-gives
-
-$$m(F) \approx 0.22748124\ldots,$$
+gives $m(F) \approx 0.22748124\ldots$ and
 
 $$\boxed{\lim_{N\to\infty} M(P_N) = \exp\bigl(m(F)\bigr) \approx 1.2554340\ldots}$$
 
@@ -220,30 +233,73 @@ $M(P_{1002}) - L \approx +9.5 \times 10^{-5}$.
 
 The Boyd–Lawton limit is **above Lehmer's number** ($1.17628\ldots$),
 so it is a *barrier* for this family: no matter how large $N$ grows,
-$M(P_N)$ stays $\geq 1.2554\ldots$ in the limit, with the $N=22$ member
-at $1.18837$ being the closest single case to Lehmer's bound that the
-family achieves.
+$M(P_N)$ stays $\geq 1.2554\ldots$ in the limit, with the $N = 22$
+member at $1.18837$ being the closest single case to Lehmer's bound
+that the family achieves.
 
-![Mahler-measure convergence for two parametric families](images/two-family-convergence.png)
+### The 5-term Salem family (L ≈ 1.2857)
 
-Each family $(a, d)$ has its own Boyd-Lawton limit $L_{a,d}$. The red
-trace shows the Max-U family $(2, 3, -)$ above, settling onto
-$L_{(2,3)} = 1.2554$; the blue trace shows the next-closest non-diagonal
-family $(2, 12, -)$ from the generalisation below, settling onto
-$L_{(2,12)} = 1.3091$. Reproduce with
-[`tools/scan_pn_convergence.py`](tools/scan_pn_convergence.py) per
-family and overlay via
-[`tools/plot_two_family_convergence.py`](tools/plot_two_family_convergence.py).
+The second family is the **sparsest reciprocal Salem form below 1.3**:
 
-### Generalising to two cyclotomic parameters
+$$P_{N, a, s_1, s_2}(x) = 1 + s_1 x^a + s_2 x^{N/2} + s_1 x^{N-a} + x^N, \qquad N \text{ even} \ge 8, \quad 1 \le a < N/2, \quad s_1, s_2 \in \\{-1, +1\\}.$$
 
-Replacing the background factor $(x+1) = \Phi_2$ by a general cyclotomic
-$\Phi_a$ gives a two-parameter family:
+Five non-zero coefficients, height 1, palindromic — this is the
+canonical 5-term reciprocal form whose Mahler measure stays below 1.3.
+The two sign parameters partition the family into two sub-families
+sharing nearly-equal but not identical Boyd-Lawton limits.
 
-$$P_{a,d,k,s}(x) = \Phi_a(x)(x^k+1) + s \cdot x^{(\phi(a)+k-\phi(d))/2}\Phi_d(x), \qquad \deg P_{a,d,k,s} = \phi(a) + k.$$
+**Bivariate companions.** Substituting $u = x^{N/2 - a}$ and then
+$y = x^a$ (a torus-measure-preserving change of variables) takes the
+univariate $P_{N,a,s_1,s_2}$ to one of two bivariate forms depending
+on the sign pair:
 
-(Here $k$ is a perturbation index, not the polynomial degree — different
-$(a, d, k, s)$ choices yield polynomials of different degrees.)
+- $(s_1, s_2) \in \\{(-, -), (+, +)\\}$:
+
+  $$G_{\Phi_3}(y, u) = y^2 u^2 - y\,\Phi_3(u) + 1, \qquad \Phi_3(u) = u^2 + u + 1.$$
+
+- $(s_1, s_2) \in \\{(-, +), (+, -)\\}$:
+
+  $$G_{\Phi_6}(y, u) = y^2 u^2 - y\,\Phi_6(u) + 1, \qquad \Phi_6(u) = u^2 - u + 1.$$
+
+In both cases the substitution is independent of the perturbation
+index $a$, so the Boyd-Lawton limit is **independent of $a$** — every
+$a$-slice converges to the same value. The two limits are:
+
+$$L_{S5[\Phi_3]} = \exp\bigl(m(G_{\Phi_3})\bigr) = 1.285714475811306572\ldots$$
+
+$$L_{S5[\Phi_6]} = \exp\bigl(m(G_{\Phi_6})\bigr) = 1.285741055747102200\ldots$$
+
+The two values differ by only $2.66 \times 10^{-5}$ — visually
+indistinguishable on a DB-wide $M$-vs-$N$ plot, where the four sign
+combinations form a single thick band at $M \approx 1.2857$. Computed
+via Jensen-lemma reduction in
+[`tools/compute_boyd_lawton_family.py`](tools/compute_boyd_lawton_family.py).
+
+**DB membership.** Counting all four sign combinations, the 5-term
+Salem family accounts for the bulk of the $L \approx 1.2857$ band in
+the DB. Both irreducible $P_{N, a, s_1, s_2}$ and the non-cyclotomic
+factors of reducible members are catalogued (the latter via
+[`tools/factor_5term_reducibles.py`](tools/factor_5term_reducibles.py),
+filling the dense $\mathrm{NNZ} > 3$ tail of the band at high $N$).
+
+[![5-term off-circle roots](images/5term-zoom.png)](images/5term-zoom-hires.png)
+
+Off-circle roots of every entry in the family, filtered to drop roots
+within $5 \times 10^{-4}$ of $|r|=1$. The left panel is the full unit
+disk; the right zooms into the Salem-pair pocket near $r = +1$,
+revealing the bow-tie structure of real-axis Salem roots flanking by
+near-real complex roots that approach the unit circle as $N$ grows.
+
+### Generalising via cyclotomic perturbation
+
+The 7-term family above belongs to a wider construction. For
+cyclotomic indices $(a, d)$, define
+
+$$P_{a,d,k,s}(x) = \Phi_a(x)(x^k + 1) + s \cdot x^{(\phi(a) + k - \phi(d))/2}\,\Phi_d(x), \qquad \deg P = \phi(a) + k.$$
+
+(Here $k$ is a perturbation index, not the polynomial degree —
+different $(a, d, k, s)$ choices yield polynomials of different
+degrees.)
 
 **Boyd–Lawton limit per family.** For each $(a, d)$ with
 $\phi(d) \geq \phi(a)$, the sequence $M(P_{a,d,k,s})$ as $k \to \infty$
@@ -254,11 +310,17 @@ is the bivariate companion. The sign $s$ does not affect the limit
 Computed via the 1D Jensen reduction in
 [`tools/compute_boyd_lawton_family.py`](tools/compute_boyd_lawton_family.py).
 
-**M(P) limits L for each (a, d) family.** Rows: $a$. Columns: $d$.
-Blank cells: $\phi(d) < \phi(a)$ (excluded by the construction).
-Diagonal $a = d$: the polynomial factors into cyclotomics, so the
-limit is trivially $L = 1$. The only off-diagonal cell with $L < 1.3$
-is **(2, 3)** (bold) — the Max-U family.
+**This table is the theoretical landscape for one family-style — the
+cyclotomic-perturbation construction.** It does *not* enumerate every
+parametric family below 1.3; the 5-term Salem family of the previous
+subsection has a different bivariate shape
+($y^2 u^2 - y\,\Phi_d(u) + 1$) and is not predicted by any cell here.
+
+Rows: $a$. Columns: $d$. Blank cells: $\phi(d) < \phi(a)$ (excluded
+by the construction). Diagonal $a = d$: the polynomial factors into
+cyclotomics, so the limit is trivially $L = 1$. The only off-diagonal
+cell with $L < 1.3$ is **(2, 3)** (bold) — the 7-term family of the
+previous subsection.
 
 | $a$ \ $d$ | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
 |---:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -277,21 +339,27 @@ is **(2, 3)** (bold) — the Max-U family.
 | **14** |   |   |   |   |   | 2.1641 |   | 1.6421 |   | 1.9256 |   | 2.0258 | 1 | 1.6993 |
 | **15** |   |   |   |   |   |   |   |   |   | 2.1573 |   | 2.1829 |   | 1 |
 
-Among all 100 non-diagonal cells, only **(2, 3)** has $L < 1.3$. That
-family is the Max-U one analysed in detail above; entries at large $k$
-of both signs are merged into `AllKnownAdvanpix`. Every other family
-converges to a limit above the database's $M < 1.3$ coverage threshold
-and cannot contribute new sub-1.3 entries at large $k$.
+Among all 100 non-diagonal cells, only **(2, 3)** has $L < 1.3$. The
+next-smallest cell, **(2, 12)** at $L = 1.30911$, sits just above the
+cutoff and is the next theoretical band predicted by this
+family-style; the DB catalogues 494 of its members in the $[1.3, 1.5]$
+opportunistic region.
 
-We swept $a \in \{2, 3, 4, 6\}$, $d \in \{3, 5, 7, 8, 9, 10, 12\}$,
-$s \in \{-1, +1\}$, $k \in [5, 201]$ — factored each $P_{a,d,k,s}$ over
-$\mathbb{Z}$, and recorded the Mahler measure of the smallest non-cyclotomic
-irreducible factor.
+![Mahler-measure convergence for two parametric families](images/two-family-convergence.png)
 
-**Result.** Across the entire sweep, the global minimum is
-**$M = 1.17628\ldots$**, i.e. Lehmer's number itself. **Four** distinct
-parameter combinations all factor to include Lehmer's polynomial (or its
-$x \to -x$ reflection, which has the same Mahler measure):
+Convergence of $M(P_N)$ for the two parametric families predicted by
+the $(a, d)$ table. Red: the (2, 3) family settling onto
+$L_{(2,3)} = 1.2554$. Blue: the (2, 12) family settling onto
+$L_{(2,12)} = 1.3091$. Reproduce per family with
+[`tools/scan_pn_convergence.py`](tools/scan_pn_convergence.py) and
+overlay via
+[`tools/plot_two_family_convergence.py`](tools/plot_two_family_convergence.py).
+
+**Lehmer-embedding sweep.** Sweeping $a \in \\{2, 3, 4, 6\\}$,
+$d \in \\{3, 5, 7, 8, 9, 10, 12\\}$, $s \in \\{-1, +1\\}$,
+$k \in [5, 201]$, factoring each $P_{a,d,k,s}$ over $\mathbb{Z}$ and
+recording the smallest non-cyclotomic factor's Mahler measure, **the
+global minimum across the entire sweep is Lehmer's number itself**:
 
 | $a$ | $d$ | $k$ | sign | smallest non-cyc factor |
 |---:|---:|---:|:---:|---|
@@ -303,63 +371,21 @@ $x \to -x$ reflection, which has the same Mahler measure):
 The second-smallest in the sweep is $M \approx 1.18837$ at
 $(a, d, k, s) = (2, 3, 21, -)$ — the Lehmer sibling we found earlier.
 
-**The cyclotomic-perturbation family cannot break Lehmer's bound, but it
-embeds Lehmer's polynomial naturally in many ways.** This is consistent
-with Boyd's conjecture that all small Mahler measures $> 1$ arise from a
-structured (Salem–Boyd-style) construction.
+**The cyclotomic-perturbation family-style cannot break Lehmer's
+bound, but it embeds Lehmer's polynomial naturally in many ways.**
+This is consistent with Boyd's conjecture that all small Mahler
+measures $> 1$ arise from a structured (Salem–Boyd-style)
+construction.
 
 Reproduce with [`tools/sweep_ad.py`](tools/sweep_ad.py); raw data in
 [`doc/ad_sweep.csv`](doc/ad_sweep.csv).
 
-### Densest extremal polynomials
-
-The polynomials maximising height ($H$), length ($L$), non-zero count
-($\mathrm{NNZ}$), and root count outside the unit disk ($K$) all live near
-degrees 350–452 and have hundreds of non-zero coefficients with intricate
-combinatorial structure. Click any thumbnail below for the full polynomial
-typeset in LaTeX:
-
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <a href="images/champion_nnz212.png">
-        <img src="images/champion_nnz212.png" width="100%" alt="NNZ=212 champion polynomial"/>
-      </a>
-      <br/>
-      <sub><b>NNZ = 212 / L = 4173 / H = 23</b><br/>
-      degree 432, M &asymp; 1.25541<br/>
-      212 non-zero half-coefficients,<br/>
-      height 23, length 4173</sub>
-    </td>
-    <td align="center" width="33%">
-      <a href="images/champion_h29.png">
-        <img src="images/champion_h29.png" width="100%" alt="H=29 champion polynomial"/>
-      </a>
-      <br/>
-      <sub><b>H = 29</b><br/>
-      degree 348, M &asymp; 1.25431<br/>
-      168 non-zero half-coefficients,<br/>
-      max single coefficient 29</sub>
-    </td>
-    <td align="center" width="33%">
-      <a href="images/champion_k76.png">
-        <img src="images/champion_k76.png" width="100%" alt="K=76 champion polynomial"/>
-      </a>
-      <br/>
-      <sub><b>K = 76 / Q = 152</b><br/>
-      degree 452, M &asymp; 1.28530<br/>
-      striking periodic (1, &minus;1, 0)<br/>
-      coefficient signature</sub>
-    </td>
-  </tr>
-</table>
-
 ### Closest Mahler-measure pair
 
 A natural question for any large set of algebraic numbers is *how close
-together can two of them be?* Scanning all 51,032 entries in
-`AllKnownAdvanpix`, the two polynomials whose Mahler measures differ by
-the **smallest amount** are:
+together can two of them be?* Scanning all 52,730 entries in
+`AllKnownAdvanpix`, the two polynomials whose Mahler measures differ
+by the **smallest amount** are:
 
 | Degree | $P(x)$ | $M(P)$ |
 |---:|---|---|
@@ -368,33 +394,26 @@ the **smallest amount** are:
 
 $$|M_1 - M_2| \approx 7.72 \times 10^{-13}.$$
 
-The two Mahler measures agree to **12 decimal places**, then diverge. The
-two polynomials themselves are structurally unrelated: they sit at
-different degrees, have different coefficient supports, and live in the
-upper end of the database's $M < 1.3$ coverage (well above Lehmer's number).
-Both happen to be among the sparsest five-term reciprocals in the database
-($\mathrm{NNZ} = 2$, $L = 5$), with the perturbations placed at the
-half-degree and at one off-centre position — but the off-centre placements
-differ ($41$ vs $61$) and so do the signs.
+Both polynomials are sparse five-term reciprocals
+($\mathrm{NNZ} = 2$, $L = 5$) — members of the 5-term Salem family
+above. This is no coincidence: by construction every member of that
+family converges to $L_{S5} \approx 1.2857$ from above, and as $N$
+grows the family's members get arbitrarily close to that limit (and
+hence to each other in $M$). The 12-digit agreement here is just the
+Cauchy property of the convergent sequence:
 
-**This record is a finite-truncation artifact, not a structural bound.**
-For any convergent family $\\{P_N\\}$ with $M(P_N) \to L$, the Cauchy
-property says: for any $\varepsilon > 0$ there exist $N_1, N_2$ with
-$|M(P_{N_1}) - M(P_{N_2})| < \varepsilon$. Pick $N_1, N_2$ large enough
-that each $M(P_{N_i})$ is within $\varepsilon/2$ of $L$. The
-[Max-U family](#the-max-u-family--sparsest-polynomials-with-most-roots-on-z1)
-above is exactly such a family: $M(P_N) \to 1.2554340\ldots$ Empirically
-$|M(P_N) - L| = O(1/N)$ and the consecutive gap $|M(P_N) - M(P_{N+2})|$
-shrinks like $O(1/N^2)$. Extending the family far enough beyond
-$N = 1002$ would eventually undercut the $7.72 \times 10^{-13}$ pair
-above with a pair drawn entirely from a single family.
+> For any $\varepsilon > 0$, the family contains two members
+> $P_{N_1}$ and $P_{N_2}$ with
+> $|M(P_{N_1}) - M(P_{N_2})| < \varepsilon$.
 
-Reproduce with `./build/psmm -analyze=AllKnownAdvanpix` (look for the line
-"Polynomials with nearest Mahler measures").
+Extending the family to larger $N$ would tighten the record indefinitely.
+
+Reproduce with `./build/psmm -analyze=AllKnownAdvanpix` (look for the
+line "Polynomials with nearest Mahler measures").
 
 ### Database-wide verification
 
-Every one of the **51,032 polynomials** in `AllKnownAdvanpix` has been
+Every one of the **52,730 polynomials** in `AllKnownAdvanpix` has been
 re-verified independently with [PARI/GP](https://pari.math.u-bordeaux.fr/):
 irreducibility over $\mathbb{Z}$, Mahler measure agreement with the
 stored 72-digit value, and self-consistent root counts $(K, U, Q, R)$
@@ -403,6 +422,36 @@ remain.** The audit and the cross-checking script
 ([`tools/bulk_verify.py`](tools/bulk_verify.py)) are reproducible end-to-end;
 per-entry results are recorded in
 [`doc/database-verification.csv`](doc/database-verification.csv).
+
+### Future work
+
+The empirical observation that every sub-1.3 polynomial in our search
+corresponds to one of two Boyd-Lawton loci is structurally striking.
+Two natural research directions emerge:
+
+1. **Higher-height, larger-NNZ brute force.** The current exhaustive
+   search is bounded by alphabet $\\{-1, 0, 1\\}$, $\mathrm{NNZ} \le 3$
+   — a small corner of the integer-reciprocal-polynomial landscape.
+   PSMM supports arbitrary alphabets and NNZ caps out of the box; a
+   targeted scan at $H \le 2$, $\mathrm{NNZ} \le 5$, $N \le 60$ would
+   probe whether the two-loci picture is universal or specific to the
+   corner we have explored. If a third sub-1.3 locus appears, the
+   family-identification pipeline (structural-signature filter →
+   bivariate companion → Jensen reduction) extends naturally.
+
+2. **Above-1.3 band exploration.** The $(a, d)$ cyclotomic-perturbation
+   table predicts many family-style limits above 1.3 — the (2, 12)
+   family at $L = 1.30911$ being the next one up. The DB already
+   catalogues 494 members of this family opportunistically, plus a
+   handful of others; a comprehensive scan of the predicted upper-band
+   structure would surface the next structural layer of small-Mahler-
+   measure polynomial families. The 1.3 cap is a historical artefact
+   of Mossinghoff's [`Known180`](Known180), not a theoretical
+   boundary; see [`doc/SCOPE.md`](doc/SCOPE.md) for the DB's
+   above-threshold coverage policy.
+
+Family inventory, formulas, and DB census counts are kept current in
+[`doc/FAMILIES.md`](doc/FAMILIES.md).
 
 ## How it works
 
@@ -657,27 +706,10 @@ non-primitive polynomials:
 
 | File | Description |
 |---|---|
-| `AllKnownAdvanpix` | Extended set of known polynomials with M(p) < 1.3, including all entries from `Known180` plus ~40k new finds at degrees > 180 from this project. 72-digit Mahler measures. |
-| `Known180` | Michael Mossinghoff's historical list through degree 180 ([source](http://www.cecm.sfu.ca/~mjm/Lehmer/lists/)). Legacy format with 13-digit precision. |
-
-**File format** (AllKnownAdvanpix):
-
-```
-N M NNZ H L K U Q R c_0 c_1 ... c_{N/2}
-```
-
-| Field | Meaning |
-|---|---|
-| N | Polynomial degree |
-| M | Mahler measure (72 decimal digits) |
-| NNZ | Non-zero half-coefficients (excluding the leading 1) |
-| H | Height (max coefficient magnitude) |
-| L | Length (sum of coefficient magnitudes) |
-| K | Roots outside the unit circle |
-| U | Roots on the unit circle (complex conjugate pairs) |
-| Q | Complex non-unity roots (quadruplets) |
-| R | Real non-unity roots (pairs) |
-| c_0 ... c_{N/2} | Half-coefficients (c_0 = 1 always) |
+| `AllKnownAdvanpix` | Extended set of known polynomials with small Mahler measure. Schema and M-range coverage policy documented in [`doc/SCOPE.md`](doc/SCOPE.md). |
+| `Known180` | Michael Mossinghoff's historical list through degree 180 ([source](http://www.cecm.sfu.ca/~mjm/Lehmer/lists/)). Legacy format with 13-digit precision; $M < 1.3$ only. |
+| `doc/FAMILIES.md` | Catalogue of parametric families with their Boyd-Lawton limits and bivariate companions. |
+| `doc/SCOPE.md` | DB schema, M-range coverage tiers, comparison to Known180. |
 
 ## References
 
@@ -703,6 +735,3 @@ If you use any of these resources in published work, please cite:
 
 > Pavel Holoborodko, *PSMM: Polynomials with Small Mahler Measure*,
 > Advanpix LLC, 2020–2026. <https://github.com/advanpix/PSMM>
-
-A machine-readable citation entry is provided in [`CITATION.cff`](CITATION.cff)
-(GitHub's "Cite this repository" widget reads this file).
