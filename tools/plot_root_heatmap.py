@@ -108,6 +108,34 @@ def select_subset(entries, subset: str, limit: int, family_files: list[Path]):
                         family_keys.add((row[0], row[2]))
         matched = [e for e in entries if (e[0], e[2]) in family_keys]
         return matched
+    if subset == "5term":
+        # Structural-signature filter on the DB itself: every entry
+        # matching the S5 5-term reciprocal Salem form
+        #   P_{N,a,s1,s2}(x) = 1 + s1*x^a + s2*x^{N/2} + s1*x^{N-a} + x^N
+        # i.e. NNZ=2, H=1, L=5, half[0]=1, |half[N/2]|=1, exactly one
+        # other |half[i]|=1 interior coefficient, and palindromic
+        # mirroring (automatic from DB storage). Covers all S5[Phi_3]
+        # and S5[Phi_6] sub-families across all 4 sign combinations.
+        matched = []
+        for entry in entries:
+            N, _M, half, raw = entry
+            toks = raw.split()
+            try:
+                nnz = int(toks[2])
+                H = int(toks[3])
+                L = int(toks[4])
+            except (ValueError, IndexError):
+                continue
+            if nnz != 2 or H != 1 or L != 5:
+                continue
+            if half[0] != 1 or abs(half[N // 2]) != 1:
+                continue
+            interior = half[1:N // 2]
+            nz = [v for v in interior if v != 0]
+            if len(nz) != 1 or abs(nz[0]) != 1:
+                continue
+            matched.append(entry)
+        return matched
     raise SystemExit(f"unknown subset: {subset}")
 
 
@@ -479,9 +507,11 @@ def plot_disk(roots: np.ndarray, args, out_path: Path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--subset", choices=["top", "maxu"], default="top",
+    ap.add_argument("--subset", choices=["top", "maxu", "5term"], default="top",
                     help="top = 100 smallest-M polynomials; "
-                         "maxu = (a=2,d=3,sign=-1) Max-U family new finds")
+                         "maxu = (a=2,d=3,sign=-1) Max-U / 7-term family; "
+                         "5term = S5[Phi_3] + S5[Phi_6] 5-term reciprocal "
+                         "Salem family (all 4 sign combos)")
     ap.add_argument("--limit", type=int, default=100,
                     help="for --subset top, how many to pick (default 100)")
     ap.add_argument("--coord", choices=["polar", "annulus", "disk"],
@@ -576,10 +606,13 @@ def main():
     entries = load_db_entries(REPO / "AllKnownAdvanpix")
     print(f"DB: {len(entries)} entries", file=sys.stderr)
 
+    # family_files is only consulted by the maxu subset; the 5term
+    # subset uses an inline structural-signature filter over the DB
+    # (see select_subset).
     family_files = [
         REPO / "doc" / "new_finds_d_only.txt",
         REPO / "doc" / "new_finds_d_only_pn_extended.txt",
-        # part-2 entries don't have roots in roots/ yet — skip
+        REPO / "doc" / "new_finds_d_only_pn_extended_part2.txt",
     ]
 
     # ---- Single-family zoom-panel branch ---------------------------
