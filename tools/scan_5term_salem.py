@@ -133,8 +133,23 @@ def main():
                     default=REPO / "work" / "scan-5term-salem.csv")
     ap.add_argument("--db-output", type=Path, default=None,
                     help="optional AllKnownAdvanpix-format dump of "
-                         "irreducible entries with 1.001 < M < 1.3")
-    ap.add_argument("--roots-output", type=Path, default=None)
+                         "irreducible entries with 1.001 < M < --m-max-db")
+    ap.add_argument("--roots-output", type=Path, default=None,
+                    help="roots-block file (canonical # DB-line header + "
+                         "body), emitted for every polynomial with "
+                         "1.001 < M < --m-max-log")
+    ap.add_argument("--m-max-db", type=float, default=1.3,
+                    help="DB-format emission cutoff (default 1.3, "
+                         "matches the historical DB threshold)")
+    ap.add_argument("--m-max-log", type=float, default=1.5,
+                    help="logging cutoff: polynomials with "
+                         "1.001 < M < this are emitted to --roots-output "
+                         "and CSV even if they exceed --m-max-db. Default "
+                         "1.5; future scans may extend if upper bands are "
+                         "of interest. See doc/SCOPE.md.")
+    ap.add_argument("--m-min", type=float, default=1.001,
+                    help="lower M cutoff (default 1.001 to skip "
+                         "trivially-cyclotomic cases)")
     args = ap.parse_args()
 
     if args.combos:
@@ -219,8 +234,14 @@ def main():
                         M_f = float(M_str)
                     except ValueError:
                         M_f = float("nan")
-                    if (db_f and irr and 1.001 < M_f < 1.3
-                            and 2 * K + U == N and Q + R == 2 * K):
+                    # Build the canonical DB-line for the irreducible case
+                    # once; used by both --db-output and --roots-output so
+                    # the roots-block header is in canonical AllKnownAdvanpix
+                    # format (downstream tools like inject_scan_roots.py
+                    # expect this).
+                    db_line = None
+                    if (irr and 2 * K + U == N and Q + R == 2 * K
+                            and args.m_min < M_f < args.m_max_log):
                         half = [0] * (N // 2 + 1)
                         half[0] = 1
                         half[a] = s1
@@ -230,19 +251,40 @@ def main():
                         NNZ = 2
                         M_db = round_to_db_format(M_str)
                         coefs = " ".join(str(c) for c in half)
-                        db_f.write(f"{N} {M_db} {NNZ} {H} {L_full} "
-                                   f"{K} {U} {Q} {R} {coefs}\n")
+                        db_line = (f"{N} {M_db} {NNZ} {H} {L_full} "
+                                   f"{K} {U} {Q} {R} {coefs}")
+
+                    if (db_f and db_line is not None
+                            and M_f < args.m_max_db):
+                        db_f.write(db_line + "\n")
                         n_db_emitted += 1
-                    if roots_f is not None:
-                        roots_f.write(
-                            f"# N={N} a={a} s1={s1} s2={s2} "
-                            f"M={M_str} K={K} U={U} Q={Q} R={R}\n"
-                        )
+
+                    if roots_f is not None and db_line is not None:
+                        # Canonical roots-block header for downstream
+                        # inject_scan_roots.py --format=db-line.
+                        roots_f.write(f"# {db_line}\n")
                         for rl in root_lines:
                             toks = rl.split(maxsplit=2)
                             if len(toks) == 3:
                                 roots_f.write(f"{toks[1]} {toks[2]}\n")
                         roots_f.write("\n")
+
+                    # For reducible cases (irr == 0) within the M log range,
+                    # factor P and emit each non-cyclotomic palindromic
+                    # factor. See tools/factor_5term_reducibles.py for the
+                    # batch implementation; this online version is a hook
+                    # for future scans that want to capture factor-extracts
+                    # as they go rather than backfilling afterwards.
+                    # Currently a no-op stub — factor_5term_reducibles.py
+                    # handles the backfill flow.
+                    if (not irr) and (args.m_min < M_f < args.m_max_log):
+                        # TODO: invoke gp_factor_script (parallel to
+                        # scan_pn_convergence.py's reducible branch) and
+                        # emit per-factor DB-line + roots-block. Until
+                        # this is wired up, rely on
+                        # tools/factor_5term_reducibles.py running on the
+                        # scan CSV after the main scan finishes.
+                        pass
 
                     n_done += 1
                     if n_done % 100 == 0:

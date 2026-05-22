@@ -215,11 +215,16 @@ def gp_script(a: int, d: int, sign: int, N: int, precision: int,
     )
 
 
-def gp_script_factor(a: int, d: int, sign: int, N: int, precision: int) -> str:
+def gp_script_factor(a: int, d: int, sign: int, N: int, precision: int,
+                     m_min: float = 1.001, m_max: float = 1.3) -> str:
     """Reducible-case pass: factor P over Z, emit each non-cyclotomic factor
-       F with 1.001 < M(F) < 1.3 as an AllKnownAdvanpix-format line.
+       F with m_min < M(F) < m_max as an AllKnownAdvanpix-format line.
        Mirrors PSMM's brute-force behaviour of factoring candidates and
-       collecting all sub-threshold irreducible Salem-type factors."""
+       collecting all sub-threshold irreducible Salem-type factors.
+
+       Thresholds are configurable so the caller can widen the cutoff to
+       catalogue factors above the project's current DB threshold (see
+       doc/SCOPE.md). Default 1.3 matches the historical DB threshold."""
     p_expr = _build_p_expr(a, d, sign, N)
     return (
         f"default(realprecision, {precision});\n"
@@ -231,7 +236,7 @@ def gp_script_factor(a: int, d: int, sign: int, N: int, precision: int) -> str:
         "  rts = polroots(F); "
         "  M = 1.0; K = 0; U = 0; Q = 0; R = 0; eps = 1e-30; "
         f"  for (j = 1, #rts, {_CLASSIFY_BODY}); "
-        "  if (M <= 1.001 || M >= 1.3, next); "
+        f"  if (M <= {m_min} || M >= {m_max}, next); "
         "  if (2*K + U != deg_F || Q + R != 2*K, "
         "      print(\"SKIP_KUQR \", deg_F, \" \", K, \" \", U, \" \", Q, \" \", R); next); "
         "  if (polcoef(F, deg_F) != polcoef(F, 0), "
@@ -303,8 +308,16 @@ def main():
                     help="path to save root coordinates per N in "
                          "compute_roots block format (header is the "
                          "DB-style line for P_N, body is one 'real imag' "
-                         "per root). NOT filtered by M<1.3 -- all N values "
+                         "per root). NOT filtered by M -- all N values "
                          "are emitted. Default: empty = no roots output.")
+    ap.add_argument("--m-min", type=float, default=1.001,
+                    help="lower M cutoff (default 1.001 — skips "
+                         "trivially-cyclotomic cases)")
+    ap.add_argument("--m-max-db", type=float, default=1.3,
+                    help="DB-format emission cutoff (default 1.3 — "
+                         "matches the historical DB threshold; see "
+                         "doc/SCOPE.md). Raise to catalogue factors "
+                         "above 1.3.")
     args = ap.parse_args()
     a, d, sign = args.a, args.d, args.sign
     if phi_n(d) < phi_n(a):
@@ -448,10 +461,11 @@ def main():
                     roots_f.write("\n")
 
                 # DB-emit logic — mirrors PSMM brute-force search:
-                #   - if irreducible AND 1.001 < M < 1.3: emit P directly
-                #   - if reducible AND M < 1.3: factor P, extract each
-                #     non-cyclotomic factor F with 1.001 < M(F) < 1.3
-                if db_f and ok and 1.001 < M_f < 1.3:
+                #   - if irreducible AND m_min < M < m_max_db: emit P directly
+                #   - if reducible AND m_min < M < m_max_db: factor P,
+                #     extract each non-cyclotomic factor F with
+                #     m_min < M(F) < m_max_db
+                if db_f and ok and args.m_min < M_f < args.m_max_db:
                     # Round M to the DB's 72-digit format AT THE EMIT STEP,
                     # so the merge pipeline doesn't need a precision-patch
                     # follow-up.
@@ -472,7 +486,9 @@ def main():
                                 ["gp", "-q", "--default",
                                  "parisize=4000000000"],
                                 input=gp_script_factor(a, d, sign, N,
-                                                       args.precision),
+                                                       args.precision,
+                                                       m_min=args.m_min,
+                                                       m_max=args.m_max_db),
                                 capture_output=True, text=True,
                                 timeout=args.timeout,
                             )
