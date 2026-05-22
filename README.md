@@ -60,20 +60,15 @@ one of the oldest open questions in number theory.
 
 ## Results
 
-The [`AllKnownAdvanpix`](AllKnownAdvanpix) database catalogues **52,730
-primitive irreducible reciprocal integer polynomials** with small Mahler
-measure. The project name says *small* — not "below 1.3" — and the DB
-reflects that:
-
-- **52,234 entries with $M(P) < 1.3$**, the historical research region.
-  Of these, 48,341 came from exhaustive PSMM brute force ($H \le 1$,
-  $\mathrm{NNZ} \le 3$, $N \le 456$); the rest came from analytical
-  extensions and reducible-case factor-extracts of identified parametric
-  families up to $N = 1500$.
-- **496 entries with $M(P) \in [1.3, 1.5]$**, catalogued
-  opportunistically from parametric scans (not exhaustive in this
-  region). See [`doc/SCOPE.md`](doc/SCOPE.md) for the full M-range
-  coverage policy.
+The [`AllKnownAdvanpix`](AllKnownAdvanpix) database catalogues
+**52,730 primitive irreducible reciprocal integer polynomials**. Of
+these, **52,234 have $M(P) < 1.3$** — effectively exhaustive within
+the $H \le 1$, $\mathrm{NNZ} \le 3$, $N \le 456$ brute-force search
+space, plus parametric extensions of identified families to
+$N = 1500$. The remaining **496 entries with $M(P) \in [1.3, 1.5]$**
+come from parametric scans that catalogued above-threshold members of
+the same families; see [`doc/SCOPE.md`](doc/SCOPE.md) for the schema
+and coverage policy.
 
 Each entry records the Mahler measure with 72-digit precision and
 includes the structural counts $\mathrm{NNZ}, H, L, K, U, Q, R$.
@@ -120,9 +115,8 @@ the full polynomial is recovered by reciprocity $a_k = a_{N-k}$.
 
 Plotting $M(P)$ against $N$ for every entry with $N \le 456$ and
 $M < 1.3$ reveals **exactly two horizontal accumulation bands**, at
-$M = 1.2554$ and $M = 1.2857$. Both bands sharpen as $N$ grows and
-become indistinguishable from horizontal lines beyond $N \approx 200$.
-NNZ stratification (sparse $\le 3$ in blue, dense $> 3$ in red) shows
+$M = 1.2554$ and $M = 1.2857$. Both bands sharpen as $N$ grows. NNZ
+stratification (sparse $\le 3$ in blue, dense $> 3$ in red) shows
 that the dense entries — almost all of them factor-extracts of
 reducible members of two specific parametric families — sit in the
 *same* two bands. They inherit each family's limit by construction.
@@ -130,7 +124,7 @@ reducible members of two specific parametric families — sit in the
 Each band corresponds to a parametric family whose Mahler measure
 converges to a known **Boyd-Lawton limit** as the degree grows. The
 two families are characterised in detail in the next two subsections;
-their full inventory (formulas, bivariate companions, DB counts) is in
+their full inventory (formulas, bivariate companions, database counts) is in
 [`doc/FAMILIES.md`](doc/FAMILIES.md).
 
 **Scope of the empirical claim.** This is a property of the corner of
@@ -165,7 +159,7 @@ illustrative members:
 The $N = 22$ member factors as $\Phi_{12}(x) \cdot R_{18}(x)$, where
 $R_{18}$ is the **second-smallest known Salem polynomial**
 ($M \approx 1.18837$, just above Lehmer's $1.17628$); it appears in the
-DB as the entry `18 1.188368…`. The $N = 456$ member is the
+database as the entry `18 1.188368…`. The $N = 456$ member is the
 polynomial PSMM's brute-force search originally surfaced — three
 non-zero half-coefficients and yet $U = 396$ roots on the unit
 circle. Recognising the template extended the family analytically to
@@ -186,9 +180,8 @@ constant rate:
 $$\frac{K}{N} \approx 0.067 \approx \frac{1}{15}, \qquad \frac{U}{N} \approx \frac{13}{15}.$$
 
 So roughly **13 of every 15 roots sit on the unit circle**,
-irrespective of $N$. (Historically this is why this family was called
-"Max-U" — its members have the highest fraction of roots on the unit
-circle in the DB.)
+irrespective of $N$ — the highest fraction of unit-circle roots of any
+family in `AllKnownAdvanpix`.
 
 [![Family roots, off-circle pocket](images/maxu-zoom.png)](images/maxu-zoom-hires.png)
 
@@ -202,7 +195,7 @@ lens of complex Salem roots flanking a tight spine of real-axis roots.
 **Sign twin.** Flipping the sign of the $\Phi_3$ perturbation gives
 the twin family $(x + 1)(x^{N-1} + 1) + x^{N/2 - 1}\Phi_3(x)$. By
 Mahler-measure sign invariance both signs share $L = 1.2554$, and both
-are merged into the DB.
+are merged into the database.
 
 #### Analytic limit (Boyd–Lawton theorem)
 
@@ -270,14 +263,15 @@ $$L_{S5[\Phi_3]} = \exp\bigl(m(G_{\Phi_3})\bigr) = 1.285714475811306572\ldots$$
 $$L_{S5[\Phi_6]} = \exp\bigl(m(G_{\Phi_6})\bigr) = 1.285741055747102200\ldots$$
 
 The two values differ by only $2.66 \times 10^{-5}$ — visually
-indistinguishable on a DB-wide $M$-vs-$N$ plot, where the four sign
-combinations form a single thick band at $M \approx 1.2857$. Computed
-via Jensen-lemma reduction in
+indistinguishable on a database-wide $M(P)$ vs $N$ scatter, where the
+four sign combinations form a single thick band at $M \approx 1.2857$.
+Computed via Jensen-lemma reduction in
 [`tools/compute_boyd_lawton_family.py`](tools/compute_boyd_lawton_family.py).
 
-**DB membership.** Counting all four sign combinations, the 5-term
-Salem family accounts for the bulk of the $L \approx 1.2857$ band in
-the DB. Both irreducible $P_{N, a, s_1, s_2}$ and the non-cyclotomic
+**Database membership.** Counting all four sign combinations, the
+5-term Salem family accounts for the bulk of the $L \approx 1.2857$
+band in `AllKnownAdvanpix`. Both irreducible $P_{N, a, s_1, s_2}$ and
+the non-cyclotomic
 factors of reducible members are catalogued (the latter via
 [`tools/factor_5term_reducibles.py`](tools/factor_5term_reducibles.py),
 filling the dense $\mathrm{NNZ} > 3$ tail of the band at high $N$).
@@ -342,18 +336,8 @@ previous subsection.
 Among all 100 non-diagonal cells, only **(2, 3)** has $L < 1.3$. The
 next-smallest cell, **(2, 12)** at $L = 1.30911$, sits just above the
 cutoff and is the next theoretical band predicted by this
-family-style; the DB catalogues 494 of its members in the $[1.3, 1.5]$
-opportunistic region.
-
-![Mahler-measure convergence for two parametric families](images/two-family-convergence.png)
-
-Convergence of $M(P_N)$ for the two parametric families predicted by
-the $(a, d)$ table. Red: the (2, 3) family settling onto
-$L_{(2,3)} = 1.2554$. Blue: the (2, 12) family settling onto
-$L_{(2,12)} = 1.3091$. Reproduce per family with
-[`tools/scan_pn_convergence.py`](tools/scan_pn_convergence.py) and
-overlay via
-[`tools/plot_two_family_convergence.py`](tools/plot_two_family_convergence.py).
+family-style; `AllKnownAdvanpix` catalogues 494 of its members in the
+$[1.3, 1.5]$ opportunistic region.
 
 **Lehmer-embedding sweep.** Sweeping $a \in \\{2, 3, 4, 6\\}$,
 $d \in \\{3, 5, 7, 8, 9, 10, 12\\}$, $s \in \\{-1, +1\\}$,
@@ -441,16 +425,16 @@ Two natural research directions emerge:
 
 2. **Above-1.3 band exploration.** The $(a, d)$ cyclotomic-perturbation
    table predicts many family-style limits above 1.3 — the (2, 12)
-   family at $L = 1.30911$ being the next one up. The DB already
-   catalogues 494 members of this family opportunistically, plus a
-   handful of others; a comprehensive scan of the predicted upper-band
-   structure would surface the next structural layer of small-Mahler-
-   measure polynomial families. The 1.3 cap is a historical artefact
-   of Mossinghoff's [`Known180`](Known180), not a theoretical
-   boundary; see [`doc/SCOPE.md`](doc/SCOPE.md) for the DB's
-   above-threshold coverage policy.
+   family at $L = 1.30911$ being the next one up. `AllKnownAdvanpix`
+   already catalogues 494 members of this family opportunistically,
+   plus a handful of others; a comprehensive scan of the predicted
+   upper-band structure would surface the next structural layer of
+   small-Mahler-measure polynomial families. The 1.3 cap is a
+   historical artefact of Mossinghoff's [`Known180`](Known180), not a
+   theoretical boundary; see [`doc/SCOPE.md`](doc/SCOPE.md) for the
+   database's above-threshold coverage policy.
 
-Family inventory, formulas, and DB census counts are kept current in
+Family inventory, formulas, and census counts are kept current in
 [`doc/FAMILIES.md`](doc/FAMILIES.md).
 
 ## How it works
@@ -709,7 +693,7 @@ non-primitive polynomials:
 | `AllKnownAdvanpix` | Extended set of known polynomials with small Mahler measure. Schema and M-range coverage policy documented in [`doc/SCOPE.md`](doc/SCOPE.md). |
 | `Known180` | Michael Mossinghoff's historical list through degree 180 ([source](http://www.cecm.sfu.ca/~mjm/Lehmer/lists/)). Legacy format with 13-digit precision; $M < 1.3$ only. |
 | `doc/FAMILIES.md` | Catalogue of parametric families with their Boyd-Lawton limits and bivariate companions. |
-| `doc/SCOPE.md` | DB schema, M-range coverage tiers, comparison to Known180. |
+| `doc/SCOPE.md` | Database schema, M-range coverage tiers, comparison to Known180. |
 
 ## References
 
