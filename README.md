@@ -60,15 +60,20 @@ one of the oldest open questions in number theory.
 
 ## Results
 
-The [`AllKnownAdvanpix`](AllKnownAdvanpix) database catalogues
-**52,730 primitive irreducible reciprocal integer polynomials**. Of
-these, **52,234 have $M(P) < 1.3$** — effectively exhaustive within
-the $H \le 1$, $\mathrm{NNZ} \le 3$, $N \le 456$ brute-force search
-space, plus parametric extensions of identified families to
-$N = 1500$. The remaining **496 entries with $M(P) \in [1.3, 1.5]$**
-come from parametric scans that catalogued above-threshold members of
-the same families; see [`doc/SCOPE.md`](doc/SCOPE.md) for the schema
-and coverage policy.
+The [`AllKnownAdvanpix`](AllKnownAdvanpix) database contains
+**52,730 primitive irreducible reciprocal integer polynomials** with
+small Mahler measure.
+
+**52,234 of them have $M(P) < 1.3$.** Up to degree 456, this is the
+complete result of our exhaustive brute-force search. The search
+covered all polynomials with $H \le 1$ and $\mathrm{NNZ} \le 3$. For
+higher degrees, up to $N = 1500$, we added members of two parametric
+families. These families are described in the next sections.
+
+**The remaining 496 polynomials have $M(P) \in [1.3, 1.5]$.** Most of
+them come from a third parametric family that converges to
+$L = 1.30911$, just above the 1.3 boundary. We store them as the
+starting point for future work on higher convergence bands.
 
 Each entry records the Mahler measure with 72-digit precision and
 includes the structural counts $\mathrm{NNZ}, H, L, K, U, Q, R$.
