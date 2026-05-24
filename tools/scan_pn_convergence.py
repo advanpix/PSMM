@@ -218,9 +218,12 @@ def gp_script(a: int, d: int, sign: int, N: int, precision: int,
 def gp_script_factor(a: int, d: int, sign: int, N: int, precision: int,
                      m_min: float = 1.001, m_max: float = 1.3) -> str:
     """Reducible-case pass: factor P over Z, emit each non-cyclotomic factor
-       F with m_min < M(F) < m_max as an AllKnownAdvanpix-format line.
-       Mirrors PSMM's brute-force behaviour of factoring candidates and
-       collecting all sub-threshold irreducible Salem-type factors.
+       F with m_min < M(F) < m_max as an AllKnownAdvanpix-format line,
+       followed by the factor's roots as 'FROOT re im' lines (one per
+       root of F). The FACTOR / FROOT / FEND markers let the caller
+       assemble per-factor roots blocks for --roots-output, so that the
+       roots file is strictly 1-1 with the DB entries emitted to
+       --db-output (no orphan full-P-N blocks for reducible cases).
 
        Thresholds are configurable so the caller can widen the cutoff to
        catalogue factors above the project's current DB threshold (see
@@ -248,7 +251,10 @@ def gp_script_factor(a: int, d: int, sign: int, N: int, precision: int,
         "  out = Str(deg_F, \" \", M, \" \", NNZ, \" \", Hh, \" \", L, "
         "            \" \", K, \" \", U, \" \", Q, \" \", R); "
         "  for (k = 1, #half, out = Str(out, \" \", half[k])); "
-        "  print(\"FACTOR \", out));\n"
+        "  print(\"FACTOR \", out); "
+        "  for (j = 1, #rts, "
+        "    print(\"FROOT \", real(rts[j]), \" \", imag(rts[j]))); "
+        "  print(\"FEND\"));\n"
         "print(\"END\");\n"
     )
 
@@ -442,23 +448,27 @@ def main():
                     w.writerow([N, M_str, "", "", K, U, Q, R])
                     last_M = None
 
-                # Roots emit (unconditional w.r.t. M cutoff). Block format
-                # matches roots/deg-NNNN.txt so plot_root_heatmap can read
-                # it directly. Header is the DB-style line for P_N (with
-                # M rounded to 72-digit DB format for consistency) when
-                # palindromic, else a simpler "# N=... M=..." string.
-                if roots_f is not None:
+                # Roots-output policy: roots are emitted ONLY for entries
+                # that go to --db-output, so the DB and roots files stay
+                # strictly 1-1 (no orphan blocks).
+                #
+                # Irreducible P_N with m_min < M < m_max_db: emit the
+                # cheap-pass roots block here.
+                # Reducible P_N: handled in the factor branch below
+                # (one roots block per emitted non-cyclo factor, using
+                # the factor's own roots from gp_script_factor's
+                # polroots(F) — NOT the full P_N roots).
+                if (db_f and roots_f is not None and ok
+                        and args.m_min < M_f < args.m_max_db and irr):
                     M_db = round_to_db_format(M_str)
                     header = db_line_for(a, d, sign, N, M_db, K, U, Q, R)
-                    if header is None:
-                        header = (f"N={N} M={M_db} K={K} U={U} Q={Q} R={R} "
-                                  "(non-palindromic)")
-                    roots_f.write(f"# {header}\n")
-                    for rl in root_lines:
-                        toks = rl.split(maxsplit=2)
-                        if len(toks) == 3:
-                            roots_f.write(f"{toks[1]} {toks[2]}\n")
-                    roots_f.write("\n")
+                    if header is not None:
+                        roots_f.write(f"# {header}\n")
+                        for rl in root_lines:
+                            toks = rl.split(maxsplit=2)
+                            if len(toks) == 3:
+                                roots_f.write(f"{toks[1]} {toks[2]}\n")
+                        roots_f.write("\n")
 
                 # DB-emit logic — mirrors PSMM brute-force search:
                 #   - if irreducible AND m_min < M < m_max_db: emit P directly
@@ -481,6 +491,9 @@ def main():
                             n_db_emitted += 1
                     else:
                         # Reducible: factor and emit each non-cyclo factor.
+                        # gp_script_factor now also emits FROOT lines per
+                        # factor, so we can assemble per-factor roots
+                        # blocks alongside the DB-format lines.
                         try:
                             proc2 = subprocess.run(
                                 ["gp", "-q", "--default",
@@ -498,20 +511,39 @@ def main():
                             proc2 = None
                         if proc2 and proc2.returncode == 0:
                             n_factors_emitted = 0
+                            # Parse FACTOR ... FROOT ... FEND blocks. Each
+                            # FACTOR header introduces a new factor whose
+                            # DB-format line + roots are emitted to db_f
+                            # and roots_f respectively.
+                            cur_db_line = None
+                            cur_factor_roots = []
                             for ln in proc2.stdout.splitlines():
                                 ln = ln.strip()
                                 if ln.startswith("FACTOR "):
-                                    # gp built a DB-format line whose M
-                                    # field is at PARI realprecision. Round
-                                    # it to 72 digits before emitting.
                                     body = ln[len("FACTOR "):]
                                     toks = body.split(maxsplit=2)
                                     if len(toks) >= 3:
                                         toks[1] = round_to_db_format(toks[1])
                                         body = " ".join(toks)
-                                    db_f.write(body + "\n")
-                                    n_factors_emitted += 1
-                                    n_db_emitted += 1
+                                    cur_db_line = body
+                                    cur_factor_roots = []
+                                elif ln.startswith("FROOT "):
+                                    parts = ln[len("FROOT "):].split()
+                                    if len(parts) == 2:
+                                        cur_factor_roots.append((parts[0],
+                                                                 parts[1]))
+                                elif ln == "FEND":
+                                    if cur_db_line is not None:
+                                        db_f.write(cur_db_line + "\n")
+                                        n_factors_emitted += 1
+                                        n_db_emitted += 1
+                                        if roots_f is not None:
+                                            roots_f.write(f"# {cur_db_line}\n")
+                                            for re_s, im_s in cur_factor_roots:
+                                                roots_f.write(f"{re_s} {im_s}\n")
+                                            roots_f.write("\n")
+                                    cur_db_line = None
+                                    cur_factor_roots = []
                                 elif ln.startswith("SKIP_"):
                                     print(f"N={N}: factor skipped: {ln}",
                                           file=sys.stderr, flush=True)
