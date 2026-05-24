@@ -127,6 +127,14 @@ def main():
     ap.add_argument("--a-max", type=int, default=0,
                     help="when --a-list is empty, cap a at this value "
                          "(default 0 = all)")
+    ap.add_argument("--a-exclude", default="",
+                    help="comma-separated list of a values to SKIP. "
+                         "Applied after --a-list / --a-max selection. "
+                         "Useful to backfill scans where some a values "
+                         "were already covered (e.g., the original "
+                         "Fibonacci-list scan: pass "
+                         "--a-exclude=1,2,3,5,8,13,21,34 to scan only "
+                         "the remaining a values).")
     ap.add_argument("--precision", type=int, default=120)
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--output", type=Path,
@@ -161,6 +169,10 @@ def main():
           file=sys.stderr)
 
     a_fixed = [int(x) for x in args.a_list.split(",") if x.strip()]
+    a_exclude = {int(x) for x in args.a_exclude.split(",") if x.strip()}
+    if a_exclude:
+        print(f"excluding a in {sorted(a_exclude)} (will be skipped)",
+              file=sys.stderr)
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     db_f = args.db_output.open("w", buffering=1) if args.db_output else None
@@ -184,6 +196,8 @@ def main():
             else:
                 a_max = args.a_max if args.a_max > 0 else N // 2 - 1
                 a_list = list(range(1, min(a_max + 1, N // 2)))
+            if a_exclude:
+                a_list = [a for a in a_list if a not in a_exclude]
             for a in a_list:
                 for (s1, s2) in combos:
                     emit_roots = roots_f is not None
