@@ -26,11 +26,12 @@
 // contract as documented in mahlerestimator.h: set context before
 // each mps_*_mpsolve, check mps_advanpix_computation_failed after.
 extern "C" {
-    extern __thread const int *  mps_advanpix_current_poly_coeffs;
-    extern __thread int          mps_advanpix_current_poly_coeffs_size;
-    extern __thread int          mps_advanpix_current_poly_n;
-    extern __thread const char * mps_advanpix_current_poly_tag;
-    extern __thread int          mps_advanpix_computation_failed;
+    extern __thread const int *   mps_advanpix_current_poly_coeffs;
+    extern __thread int           mps_advanpix_current_poly_coeffs_size;
+    extern __thread int           mps_advanpix_current_poly_n;
+    extern __thread const char *  mps_advanpix_current_poly_tag;
+    extern __thread int           mps_advanpix_computation_failed;
+    extern __thread unsigned long mps_advanpix_diag_count;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,12 +76,13 @@ inline double compute_mahler_general_polynomial_d(const std::vector<int>& coeffs
         mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
     }
 
-    // Register polynomial + reset failure flag (see mahlerestimator.h).
+    // Register polynomial + reset failure flag + reset per-poly diag counter.
     mps_advanpix_current_poly_coeffs       = coeffs.data();
     mps_advanpix_current_poly_coeffs_size  = (int) coeffs.size();
     mps_advanpix_current_poly_n            = n;
     mps_advanpix_current_poly_tag          = "compute_mahler_d:full";
     mps_advanpix_computation_failed        = 0;
+    mps_advanpix_diag_count                = 0;
 
     mps_mpsolve(s);
 
@@ -323,12 +325,13 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
     mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
     mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
 
-    // Register polynomial + reset failure flag (see mahlerestimator.h).
+    // Register polynomial + reset failure flag + reset per-poly diag counter.
     mps_advanpix_current_poly_coeffs       = coeffs;
     mps_advanpix_current_poly_coeffs_size  = n + 1;
     mps_advanpix_current_poly_n            = n;
     mps_advanpix_current_poly_tag          = "mahler_extprec:full";
     mps_advanpix_computation_failed        = 0;
+    mps_advanpix_diag_count                = 0;
 
     mps_mpsolve(s);
     error = mps_context_has_errors(s);

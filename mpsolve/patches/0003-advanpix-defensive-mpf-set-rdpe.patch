@@ -81,8 +81,8 @@ Symbols exported by this patch (all weak / thread-local):
 Verified-on: PSMM 2026-05-26 build; mpsolve 3.2.2 with patches 0001+0002.
 
 --- a/src/libmps/floating-point/link.c	2026-05-26 07:45:46.639093403 +0900
-+++ b/src/libmps/floating-point/link.c	2026-05-26 07:48:48.690558049 +0900
-@@ -12,6 +12,75 @@
++++ b/src/libmps/floating-point/link.c	2026-05-26 08:22:35.530049155 +0900
+@@ -12,6 +12,79 @@
  
  
  #include <mps/link.h>
@@ -97,26 +97,30 @@ Verified-on: PSMM 2026-05-26 build; mpsolve 3.2.2 with patches 0001+0002.
 + * offending polynomial when a non-finite rdpe mantissa is detected.
 + * See patch 0003 header for full background.
 + *
-+ * Registration fields:
++ * Registration fields (caller sets before each mps_*_mpsolve call):
 + *   mps_advanpix_current_poly_coeffs       -- pointer to coefficient array
 + *   mps_advanpix_current_poly_coeffs_size  -- number of ints in the array
 + *   mps_advanpix_current_poly_n            -- polynomial degree (informational)
 + *   mps_advanpix_current_poly_tag          -- short label naming the call site
-+ * Failure flag (read by caller after each mps_*_mpsolve):
++ * Failure flag (caller reads after each call):
 + *   mps_advanpix_computation_failed
++ * Per-polynomial diag-emit counter (caller MUST reset to 0 before each call):
++ *   mps_advanpix_diag_count
 + */
 +__thread const int *  mps_advanpix_current_poly_coeffs       = (const int*)0;
 +__thread int          mps_advanpix_current_poly_coeffs_size  = 0;
 +__thread int          mps_advanpix_current_poly_n            = 0;
 +__thread const char * mps_advanpix_current_poly_tag          = (const char*)0;
 +__thread int          mps_advanpix_computation_failed        = 0;
++__thread unsigned long mps_advanpix_diag_count               = 0;
 +
-+/* Cap diagnostic-line emissions per thread to avoid filling stderr
-+ * with thousands of duplicate lines if the bad rdpe is re-read many
-+ * times in the same mpsolve iteration. The failure flag still gets
-+ * set on every occurrence so the caller always knows the result is
-+ * invalid; only the human-readable log line is rate-limited. */
-+__thread unsigned long mps_advanpix_diag_count = 0;
++/* Cap stderr diagnostic emissions to MAX events PER POLYNOMIAL (the
++ * counter is reset by the caller before each mps_*_mpsolve call).
++ * This way each unique offending polynomial gets a bounded amount of
++ * detailed mpsolve-state info even if the bad rdpe is re-read many
++ * times during the same mpsolve iteration. The failure flag itself
++ * is set on every occurrence regardless of the rate limit, so the
++ * caller always knows the result is invalid. */
 +#define MPS_ADVANPIX_DIAG_MAX 5
 +
 +static void
@@ -158,7 +162,7 @@ Verified-on: PSMM 2026-05-26 build; mpsolve 3.2.2 with patches 0001+0002.
  
  /***********************************************************
  **              link functions                            **
-@@ -20,7 +89,21 @@
+@@ -20,7 +93,21 @@
  void
  mpf_set_rdpe (mpf_t f, rdpe_t e)
  {
@@ -168,7 +172,7 @@ Verified-on: PSMM 2026-05-26 build; mpsolve 3.2.2 with patches 0001+0002.
 +    {
 +      /* GMP's mpf_set_d would raise SIGFPE on non-finite input.
 +         Set the failure flag so caller discards, emit a diagnostic
-+         (rate-limited per thread), zero the destination to keep
++         (rate-limited per polynomial), zero the destination to keep
 +         mpsolve from crashing, and return. */
 +      mps_advanpix_computation_failed = 1;
 +      if (mps_advanpix_diag_count < MPS_ADVANPIX_DIAG_MAX)

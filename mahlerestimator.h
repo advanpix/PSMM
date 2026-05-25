@@ -20,11 +20,12 @@
 // offending polynomial, and we READ the failure flag after the call
 // to decide whether the mpsolve result is trustworthy.
 extern "C" {
-    extern __thread const int *  mps_advanpix_current_poly_coeffs;
-    extern __thread int          mps_advanpix_current_poly_coeffs_size;
-    extern __thread int          mps_advanpix_current_poly_n;
-    extern __thread const char * mps_advanpix_current_poly_tag;
-    extern __thread int          mps_advanpix_computation_failed;
+    extern __thread const int *   mps_advanpix_current_poly_coeffs;
+    extern __thread int           mps_advanpix_current_poly_coeffs_size;
+    extern __thread int           mps_advanpix_current_poly_n;
+    extern __thread const char *  mps_advanpix_current_poly_tag;
+    extern __thread int           mps_advanpix_computation_failed;
+    extern __thread unsigned long mps_advanpix_diag_count;
 }
 
 inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, double threshold, int nthreads = 1, mps_context* reuse_ctx = nullptr)
@@ -69,15 +70,16 @@ inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& co
         mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
     }
 
-    // Register polynomial for the mpsolve diagnostic + reset failure flag.
-    // We register the HALF-coefficient vector (what PSMM keeps in memory);
-    // the diagnostic tag tells offline reproducer scripts to expand half->full
-    // before re-running.
+    // Register polynomial for the mpsolve diagnostic + reset failure flag
+    // and per-polynomial diagnostic counter (so each unique polynomial
+    // gets a fresh 5-event budget for detailed stderr output, regardless
+    // of how many polynomials this thread already processed).
     mps_advanpix_current_poly_coeffs       = coeffs.data();
     mps_advanpix_current_poly_coeffs_size  = (int) coeffs.size();
     mps_advanpix_current_poly_n            = n;
     mps_advanpix_current_poly_tag          = "estimate_mahler_d:half";
     mps_advanpix_computation_failed        = 0;
+    mps_advanpix_diag_count                = 0;
 
     mps_mahler_set_threshold(threshold);
     mps_mahler_mpsolve(s);
