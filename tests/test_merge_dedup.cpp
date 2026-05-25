@@ -194,3 +194,123 @@ TEST_CASE("xneg_flip_half negates only odd-index entries")
     CHECK(out[4] ==  5);
     CHECK(out[5] == -6);
 }
+
+
+namespace {
+// Construct a polynomial entry with a specific (N, M, M_mpf) for the
+// search-phase dedup tests. nnz / coeffs irrelevant for these tests.
+reciprocal_polynomial_t make_entry(std::size_t N, double M, int bits = 128)
+{
+    reciprocal_polynomial_t p;
+    p.N      = N;
+    p.M      = M;
+    p.F.set_prec(bits);
+    p.F      = M;
+    p.nnz    = 1;
+    p.H      = 1;
+    p.L      = 5;
+    p.K      = 1;
+    p.U      = 0;
+    p.Q      = 0;
+    p.R      = 0;
+    p.coeffs.assign(N / 2 + 1, 0);
+    p.coeffs[0] = 1;
+    return p;
+}
+} // namespace
+
+
+TEST_CASE("same_polynomial_found: heuristic skip filters ONLY lower-or-equal-degree DB entries")
+{
+    // This is the invariant Pavel flagged 2026-05-25: with high-degree
+    // polynomials now in the DB, the search-phase reducibility-skip MUST
+    // NOT falsely skip a low-degree candidate just because a higher-degree
+    // DB entry happens to share its Mahler measure (e.g. when the higher-N
+    // entry is the reducible extension of the candidate's irreducible
+    // kernel). The condition `p.N <= n` in same_polynomial_found{,_m}
+    // enforces this -- DB entries with p.N > n are skipped.
+
+    std::vector<reciprocal_polynomial_t> db;
+    db.push_back(make_entry(10, 1.176280818259917));   // Lehmer (low N)
+    db.push_back(make_entry(916, 1.286084660801062)); // high-N entry sharing M with hypothetical N=458 candidate
+
+    const double tol = 1e-9;
+
+    SUBCASE("candidate at lower N than the only matching DB entry -> NOT skipped")
+    {
+        // Candidate at N=458 with M close to the N=916 DB entry.
+        // 916 > 458, so the N=916 entry must be EXCLUDED from the check.
+        int hit = same_polynomial_found(/*candidate_N=*/458, /*M=*/1.286084660801062, tol, db);
+        CHECK(hit == 0);
+    }
+
+    SUBCASE("candidate at higher N than a matching DB entry -> SKIPPED (returns DB entry's N)")
+    {
+        // Candidate at N=20 with M matching Lehmer (N=10). 10 < 20, so the
+        // Lehmer entry IS in the search set -> match -> return 10.
+        int hit = same_polynomial_found(/*candidate_N=*/20, /*M=*/1.176280818259917, tol, db);
+        CHECK(hit == 10);
+    }
+
+    SUBCASE("candidate at same N as matching DB entry -> SKIPPED")
+    {
+        // Same degree: 10 <= 10 -> in the search set.
+        int hit = same_polynomial_found(/*candidate_N=*/10, /*M=*/1.176280818259917, tol, db);
+        CHECK(hit == 10);
+    }
+
+    SUBCASE("candidate at lower N than the only matching DB entry, EQUAL N case")
+    {
+        // Empty DB except a single high-N entry -- candidate at exactly N=916
+        // matches because 916 <= 916. Candidate at any N < 916 does NOT.
+        std::vector<reciprocal_polynomial_t> db_high;
+        db_high.push_back(make_entry(916, 1.286084660801062));
+        CHECK(same_polynomial_found(916, 1.286084660801062, tol, db_high) == 916);
+        CHECK(same_polynomial_found(915, 1.286084660801062, tol, db_high) == 0);
+        CHECK(same_polynomial_found(458, 1.286084660801062, tol, db_high) == 0);
+        CHECK(same_polynomial_found(10,  1.286084660801062, tol, db_high) == 0);
+    }
+}
+
+
+TEST_CASE("same_polynomial_found_m: high-precision sibling enforces the same N <= n filter")
+{
+    std::vector<reciprocal_polynomial_t> db;
+    db.push_back(make_entry(10, 1.176280818259917));
+    db.push_back(make_entry(916, 1.286084660801062));
+
+    mpf_class target(0, /*bits=*/128);
+
+    SUBCASE("candidate at N=458 with M matching the N=916 entry -> NOT flagged")
+    {
+        target = 1.286084660801062;
+        int hit = same_polynomial_found_m(/*candidate_N=*/458, target.get_mpf_t(),
+                                          /*comp_precision=*/64, db);
+        CHECK(hit == 0);
+    }
+
+    SUBCASE("candidate at N=20 with M matching Lehmer (N=10) -> FLAGGED")
+    {
+        target = 1.176280818259917;
+        int hit = same_polynomial_found_m(/*candidate_N=*/20, target.get_mpf_t(),
+                                          /*comp_precision=*/64, db);
+        CHECK(hit == 1);
+    }
+
+    SUBCASE("candidate at N=10 with same M (same degree) -> FLAGGED")
+    {
+        target = 1.176280818259917;
+        int hit = same_polynomial_found_m(/*candidate_N=*/10, target.get_mpf_t(),
+                                          /*comp_precision=*/64, db);
+        CHECK(hit == 1);
+    }
+
+    SUBCASE("candidate at N=9 (one below the only matching DB entry) -> NOT flagged")
+    {
+        std::vector<reciprocal_polynomial_t> db_high;
+        db_high.push_back(make_entry(10, 1.176280818259917));
+        target = 1.176280818259917;
+        int hit = same_polynomial_found_m(9, target.get_mpf_t(), 64, db_high);
+        CHECK(hit == 0);
+    }
+}
