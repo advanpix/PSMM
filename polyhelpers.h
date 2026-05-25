@@ -11,6 +11,21 @@
 #ifndef __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 #define __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 
+#include <set>
+#include <utility>
+
+// x -> -x map on a reciprocal polynomial's half-coefficient vector
+// a[0]..a[N/2]: negate the entries at odd indices. P(-x) and P(x) have
+// identical Mahler measure but differ in canonical form; the DB stores
+// exactly one representative per {P(x), P(-x)} equivalence class.
+inline std::vector<int> xneg_flip_half(const std::vector<int>& half)
+{
+    std::vector<int> out(half);
+    for(std::size_t j = 0; j < out.size(); ++j)
+        if(j & 1) out[j] = -out[j];
+    return out;
+}
+
 inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<reciprocal_polynomial_t>& polynomials)
 {
     //
@@ -233,22 +248,48 @@ inline void merge_files_with_results(const std::string& input, const std::string
     for(std::size_t i = 0; i < filenames.size(); i++)
         load_polynomials(filenames[i],polynomials,precision);
 
-    // Sort list of merged polynomials by degree, tie-break by Mahler measure.
-    std::sort(polynomials.begin(),polynomials.end(),[](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) { return (a.N < b.N) || ((a.N == b.N) && (a.F < b.F)); });
+    // Sort list of merged polynomials by degree, tie-break by Mahler
+    // measure, final tie-break by coefficient vector (lexicographic).
+    // The coefficient tie-break is what makes the canonical-form choice
+    // for x->-x pairs deterministic and matches work/tools/safe_merge.py.
+    std::sort(polynomials.begin(),polynomials.end(),
+        [](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) {
+            if(a.N != b.N) return a.N < b.N;
+            if(a.F != b.F) return a.F < b.F;
+            return a.coeffs < b.coeffs;
+        });
 
     std::map<std::size_t,std::size_t> nresults;
 
-    // Add unique polynomials from lowest to highest degree to final list of results.
-    // Also compute number of unique polynomials for each degree.
+    // Dedup by (degree, half-coefficients) -- distinct polynomials sharing
+    // only their Mahler measure (e.g. an irreducible Salem and a higher-N
+    // polynomial whose factorisation includes the Salem) are NOT duplicates
+    // and must both be preserved, regardless of which degree is smaller.
+    //
+    // x -> -x flips of an existing entry are also collapsed here per Rule 9
+    // of the scan workflow: P(x) and P(-x) share an equivalence class, and
+    // the DB stores exactly one representative. With the input sorted by
+    // (N asc, M asc), whichever variant appears first becomes the canonical
+    // form -- callers wanting a specific canonical form (e.g. Lehmer's
+    // classical "1 1 0 -1 -1 -1") must place the DB file with that form
+    // first in the merge input list so it loads before competing flips.
+    //
+    // The previous implementation used same_polynomial_found_m which deduped
+    // by (p.N <= n, M within verify_precision) and silently dropped distinct
+    // higher-degree entries whenever a lower-degree entry with coincident M
+    // was merged. See commit bc1e760 for the 2026-05-25 incident.
     std::vector<reciprocal_polynomial_t> verified;
+    std::set<std::pair<std::size_t, std::vector<int>>> seen_keys;
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
         reciprocal_polynomial_t& p = polynomials[i];
-        if(!same_polynomial_found_m(p.N, p.F.get_mpf_t(), verify_precision, verified))
-        {
-            verified.push_back(p);
-            nresults[p.N]++;
-        }
+        std::pair<std::size_t, std::vector<int>> key(p.N, p.coeffs);
+        std::pair<std::size_t, std::vector<int>> xneg_key(p.N, xneg_flip_half(p.coeffs));
+        if(seen_keys.count(key)      != 0) continue;  // exact (N, coeffs) duplicate
+        if(seen_keys.count(xneg_key) != 0) continue;  // x->-x flip of existing entry
+        seen_keys.insert(key);
+        verified.push_back(p);
+        nresults[p.N]++;
     }
 
     if(verified.size() > 0)
