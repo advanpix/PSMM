@@ -1,0 +1,91 @@
+Defensive guard in mpf_set_rdpe against non-finite rdpe mantissa.
+
+Background:
+  On 2026-05-25/26, PSMM brute-force scans at N=470 and N=478 (10-scan
+  production batch on scan-box) crashed deterministically with SIGFPE
+  ~30-90 minutes in, mid-NNZ=3 enumeration. A gdb session caught the
+  fault: the signal is *raised by GMP itself* via __gmp_invalid_operation,
+  called from __gmpf_set_d when handed a NaN or Inf double.
+
+  Backtrace at SIGFPE (faulting thread):
+
+    #4  __gmp_invalid_operation        (libgmp.so.10)
+    #5  __gmpf_set_d                   (libgmp.so.10)
+    #6  mpf_set_rdpe                   (libmps/floating-point/link.c:23)
+    #7  mps_msrad                      (libmps/unisolve/solve.c:218)
+    #8  mps_mrestart                   (libmps/common/starting.c:1673)
+    #9  mps_msolve                     (libmps/unisolve/solve.c:955)
+    #10 mps_mahler_mpsolve_implementation
+    #11 estimate_mahler_reciprocal_polynomial_d   (mahlerestimator.h:51)
+    #12 the main-thread worker lambda  (psmm.cpp:323)
+
+  mps_msrad computes a cluster's scaled radius by iterating over the
+  cluster's roots and reading each root's `drad` (an rdpe_t). For high-
+  degree polynomials in PSMM's search space, one of these rdpe values
+  occasionally has a non-finite mantissa (Inf or NaN) -- some upstream
+  arithmetic in mpsolve overflowed without normalising the rdpe.
+
+  Once the corrupted rdpe reaches mpf_set_rdpe, GMP catches the
+  non-finite double and aborts the process. PSMM then writes nothing
+  to its -addto file (which is only flushed at scan end) and the entire
+  scan's accumulated *** finds are lost from the auto-pipeline. See
+  PSMM commits f06003b and b6164a5 for the N=470/N=478 recoveries via
+  psmm -fromlog.
+
+What this patch does:
+  In mpf_set_rdpe, check isfinite(mantissa) before passing to mpf_set_d.
+  On non-finite input, set the destination mpf to 0 and continue. A
+  one-line diagnostic is printed to stderr so we can monitor the rate
+  in production and correlate with offending polynomials via PSMM-side
+  instrumentation.
+
+  This is a *containment* fix, not a root-cause fix. The corrupted
+  rdpe propagates an incorrect cluster radius to mps_mrestart, which
+  may make sub-optimal precision decisions or converge to a wrong M(p)
+  for the polynomial currently being analysed. That polynomial may be
+  silently missed by the search-phase threshold filter. But every
+  *other* polynomial in the scan continues to be analysed correctly --
+  this trades one definitely-lost polynomial for a SIGFPE that lost
+  thousands of polynomials worth of post-crash NNZ=3 enumeration.
+
+  The longer-term fix is to chase the upstream cause -- which mpsolve
+  arithmetic produces the non-finite rdpe -- and prevent it there. The
+  diagnostic line gives the mantissa and exponent observed so future
+  investigation can correlate.
+
+Verified-on: PSMM 2026-05-26 build; mpsolve 3.2.2 with patches 0001+0002.
+
+--- a/src/libmps/floating-point/link.c	2026-05-26 07:30:25.292782681 +0900
++++ b/src/libmps/floating-point/link.c	2026-05-26 07:30:36.849966375 +0900
+@@ -12,6 +12,8 @@
+ 
+ 
+ #include <mps/link.h>
++#include <math.h>
++#include <stdio.h>
+ 
+ /***********************************************************
+ **              link functions                            **
+@@ -20,7 +22,21 @@
+ void
+ mpf_set_rdpe (mpf_t f, rdpe_t e)
+ {
+-  mpf_set_d (f, rdpe_Mnt (e));
++  double m = rdpe_Mnt (e);
++  if (!isfinite (m))
++    {
++      /* DEFENSIVE: rdpe mantissa is NaN or Inf. GMP's mpf_set_d would
++         call __gmp_invalid_operation, raising SIGFPE and aborting the
++         process. Set the destination to 0 and emit a diagnostic so
++         the rate can be monitored. See Advanpix patch 0003 header. */
++      fprintf (stderr,
++               "[mpsolve] mpf_set_rdpe: non-finite mantissa "
++               "(m=%.17e, exp=%ld) -- setting result to 0 to avoid SIGFPE\n",
++               m, (long) rdpe_Esp (e));
++      mpf_set_ui (f, 0);
++      return;
++    }
++  mpf_set_d (f, m);
+   if (rdpe_Esp (e) >= 0)
+     mpf_mul_2exp (f, f, rdpe_Esp (e));
+   else
