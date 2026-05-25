@@ -37,6 +37,23 @@ inline int same_polynomial_found(int n, double mahler, double tolerance, std::ve
     // and then checked its degree, which missed matches when a closer
     // polynomial at higher degree shadowed a valid match at lower degree.
     //
+    // INTENDED USE (and its high-precision sibling same_polynomial_found_m):
+    //   Search-phase reducibility skip. A candidate of degree N whose M
+    //   coincides with an existing entry at lower degree is almost
+    //   certainly reducible (q = p * c with cyclotomic c gives M(q) = M(p)),
+    //   so we skip the expensive factorisation check. The heuristic accepts
+    //   the theoretical possibility of missing a genuinely distinct
+    //   irreducible polynomial with coincident M -- not a concern in
+    //   practice for the search space we care about.
+    //
+    // DO NOT USE FOR MERGE / DEDUP / DB CONSOLIDATION:
+    //   Two polynomials with different (N, half_coefficients) are different
+    //   mathematical objects and the DB tracks both, even when M coincides.
+    //   For those code paths, dedup by (N, coeffs) + x->-x equivalence -- see
+    //   merge_files_with_results below and work/tools/safe_merge.py.
+    //   Commit e0340eb (2026-05-25) fixed merge_files_with_results that
+    //   had used this primitive in error.
+    //
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
         const reciprocal_polynomial_t& p = polynomials[i];
