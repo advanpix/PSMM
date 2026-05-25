@@ -472,10 +472,15 @@ int main(int argc, char* argv[])
                 //
                 if(candidate.F > 1)
                 {
-                    bool found_m = (same_polynomial_found_m(candidate.N, candidate.F.get_mpf_t(), verify_prec, verified) == 1) ||
-                                   (same_polynomial_found_m(candidate.N, candidate.F.get_mpf_t(), verify_prec, known   ) == 1);
+                    // Strict (N, coeffs) + x->-x dedup. Was previously
+                    // same_polynomial_found_m (M-within-precision), which
+                    // silently dropped distinct polynomials whose Mahler
+                    // measures coincided with a lower-degree DB entry --
+                    // same bug shape as the 2026-05-25 merge incident.
+                    bool found = (same_polynomial_by_coeffs(candidate.N, candidate.coeffs, verified) == 1) ||
+                                 (same_polynomial_by_coeffs(candidate.N, candidate.coeffs, known   ) == 1);
 
-                    if(!found_m)
+                    if(!found)
                     {
                         verified.push_back(candidate);
                         success_irreducible_polynomials++;
@@ -523,10 +528,12 @@ int main(int argc, char* argv[])
                                 //
                                 if(p.F > 1)
                                 {
-                                    bool found_m = (same_polynomial_found_m(p.N, p.F.get_mpf_t(), verify_prec, verified) == 1) ||
-                                                   (same_polynomial_found_m(p.N, p.F.get_mpf_t(), verify_prec, known   ) == 1);
+                                    // Strict (N, coeffs) + x->-x dedup (see comment at the
+                                    // earlier same_polynomial_by_coeffs site above).
+                                    bool found = (same_polynomial_by_coeffs(p.N, p.coeffs, verified) == 1) ||
+                                                 (same_polynomial_by_coeffs(p.N, p.coeffs, known   ) == 1);
 
-                                    if(!found_m)
+                                    if(!found)
                                     {
                                         verified.push_back(p);
                                         success_factors_total++;

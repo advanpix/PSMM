@@ -273,6 +273,77 @@ TEST_CASE("same_polynomial_found: heuristic skip filters ONLY lower-or-equal-deg
 }
 
 
+TEST_CASE("same_polynomial_by_coeffs: strict (N, coeffs) + x->-x dedup, no M dependence")
+{
+    // This is the new helper used by the verify-phase final gatekeeper
+    // (psmm.cpp:475/526) and by merge_files_with_results.  It must NOT
+    // collapse two polynomials with different (N, coeffs) just because
+    // they share a Mahler measure (the bug pattern the old verify path
+    // had via same_polynomial_found_m).
+
+    std::vector<reciprocal_polynomial_t> db;
+    db.push_back(make_entry(10, 1.176280818259917));   // Lehmer-like
+    db[0].coeffs = {1, 1, 0, -1, -1, -1};              // overwrite half-coeffs
+
+    SUBCASE("exact (N, coeffs) match -> 1")
+    {
+        std::vector<int> c = {1, 1, 0, -1, -1, -1};
+        CHECK(same_polynomial_by_coeffs(10, c, db) == 1);
+    }
+
+    SUBCASE("x->-x flip of an existing entry -> 1")
+    {
+        // x->-x of [1,1,0,-1,-1,-1] negates odd indices -> [1,-1,0,1,-1,1]
+        std::vector<int> flipped = {1, -1, 0, 1, -1, 1};
+        CHECK(same_polynomial_by_coeffs(10, flipped, db) == 1);
+    }
+
+    SUBCASE("different coeffs at same N -> 0 (even if M coincides)")
+    {
+        // Candidate with same M but different half-coeffs (fake; the point
+        // is the predicate ignores M entirely).
+        std::vector<int> different = {1, 0, 0, 1, 0, 1};
+        CHECK(same_polynomial_by_coeffs(10, different, db) == 0);
+    }
+
+    SUBCASE("different N -> 0 (the bug we're fixing)")
+    {
+        // Same coefficients but a different N is a different polynomial.
+        // (Synthetic: half-coeff vector length should equal N/2+1, but the
+        // predicate just compares vectors as-is -- the length mismatch
+        // alone makes vector equality false.)
+        std::vector<int> c = {1, 1, 0, -1, -1, -1};
+        CHECK(same_polynomial_by_coeffs(12, c, db) == 0);
+    }
+
+    SUBCASE("empty polynomials list -> 0")
+    {
+        std::vector<reciprocal_polynomial_t> empty;
+        std::vector<int> c = {1, 1, 0, -1, -1, -1};
+        CHECK(same_polynomial_by_coeffs(10, c, empty) == 0);
+    }
+
+    SUBCASE("regression: distinct polynomials with coincident M at different N -> 0")
+    {
+        // The 2026-05-25 N=470 / N=916 incident shape: an entry at N=916 in
+        // the DB shares its Mahler measure with a candidate at N=470 (which
+        // is the irreducible kernel of the N=916 reducible). Coefficients
+        // differ, lengths differ. same_polynomial_by_coeffs must say "not
+        // a duplicate", letting the verify path add the candidate.
+        std::vector<reciprocal_polynomial_t> db_high;
+        reciprocal_polynomial_t hi = make_entry(916, 1.286084660801062);
+        hi.coeffs.assign(459, 0);
+        hi.coeffs[0] = 1; hi.coeffs[35] = 1; hi.coeffs[458] = -1;  // synthetic
+        db_high.push_back(hi);
+
+        // Candidate at N=470 with completely different (smaller) coeffs.
+        std::vector<int> cand = std::vector<int>(236, 0);
+        cand[0] = 1; cand[5] = -1; cand[235] = -1;
+        CHECK(same_polynomial_by_coeffs(470, cand, db_high) == 0);  // <- the regression target
+    }
+}
+
+
 TEST_CASE("same_polynomial_found_m: high-precision sibling enforces the same N <= n filter")
 {
     std::vector<reciprocal_polynomial_t> db;

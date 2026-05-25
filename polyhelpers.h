@@ -26,6 +26,41 @@ inline std::vector<int> xneg_flip_half(const std::vector<int>& half)
     return out;
 }
 
+// STRICT dedup predicate: returns 1 if any entry in `polynomials` has
+// the same degree as `n` AND coefficients equal to `half_coeffs` or to
+// its x -> -x flip; 0 otherwise.
+//
+// Distinguishing from same_polynomial_found{,_m}: that pair is the
+// FAST search-phase reducibility-skip heuristic, comparing only by N
+// and Mahler measure within tolerance/precision. The heuristic
+// silently drops distinct polynomials that share their Mahler measure
+// (e.g. an irreducible Salem at degree N and a higher-N polynomial
+// whose factorisation includes that Salem), which is fine for skipping
+// expensive reducibility checks during enumeration but WRONG as a
+// final-verify gatekeeper before adding to the verified list.
+//
+// Use this helper at every site where we have already paid for the
+// reducibility/property computation and just need a strict
+// "is this polynomial already in our set?" check -- merge_files_with_results,
+// the verify path at psmm.cpp:475-476 / 526-527, and any other place
+// that needs (N, coeffs)-level uniqueness.
+inline int same_polynomial_by_coeffs(int n,
+                                     const std::vector<int>& half_coeffs,
+                                     std::vector<reciprocal_polynomial_t>& polynomials)
+{
+    std::vector<int> flip = xneg_flip_half(half_coeffs);
+    for(std::size_t i = 0; i < polynomials.size(); ++i)
+    {
+        const reciprocal_polynomial_t& p = polynomials[i];
+        if(p.N == static_cast<std::size_t>(n))
+        {
+            if(p.coeffs == half_coeffs) return 1;
+            if(p.coeffs == flip)        return 1;
+        }
+    }
+    return 0;
+}
+
 inline int same_polynomial_found(int n, double mahler, double tolerance, std::vector<reciprocal_polynomial_t>& polynomials)
 {
     //
