@@ -11,6 +11,8 @@
 #ifndef PSMM_ROOT_FINDER_H
 #define PSMM_ROOT_FINDER_H
 
+#include <cmath>  // std::nan
+
 //
 // MPSolve doesn't provide the function in public interface, so we just forward declare it here. Needed iif _MPS_PRIVATE is not defined.
 //
@@ -18,6 +20,18 @@
 #ifndef _MPS_PRIVATE
     extern "C" void mps_thread_pool_set_concurrency_limit(void * s, void * pool, unsigned int concurrency_limit);
 #endif
+
+// Thread-local hooks exported by mpsolve patch
+// mpsolve/patches/0003-advanpix-defensive-mpf-set-rdpe.patch. Same
+// contract as documented in mahlerestimator.h: set context before
+// each mps_*_mpsolve, check mps_advanpix_computation_failed after.
+extern "C" {
+    extern __thread const int *  mps_advanpix_current_poly_coeffs;
+    extern __thread int          mps_advanpix_current_poly_coeffs_size;
+    extern __thread int          mps_advanpix_current_poly_n;
+    extern __thread const char * mps_advanpix_current_poly_tag;
+    extern __thread int          mps_advanpix_computation_failed;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -61,7 +75,22 @@ inline double compute_mahler_general_polynomial_d(const std::vector<int>& coeffs
         mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
     }
 
+    // Register polynomial + reset failure flag (see mahlerestimator.h).
+    mps_advanpix_current_poly_coeffs       = coeffs.data();
+    mps_advanpix_current_poly_coeffs_size  = (int) coeffs.size();
+    mps_advanpix_current_poly_n            = n;
+    mps_advanpix_current_poly_tag          = "compute_mahler_d:full";
+    mps_advanpix_computation_failed        = 0;
+
     mps_mpsolve(s);
+
+    // Detect mpsolve failure (non-finite rdpe); return NaN so caller skips.
+    if(mps_advanpix_computation_failed)
+    {
+        mps_polynomial_free (s, poly);
+        if(own_context) mps_context_free (s);
+        return std::nan("");
+    }
 
     double mahler = 1.0;
     if(working_precision > 53)
@@ -294,8 +323,22 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
     mps_context_select_algorithm          (s, MPS_ALGORITHM_STANDARD_MPSOLVE);
     mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
 
+    // Register polynomial + reset failure flag (see mahlerestimator.h).
+    mps_advanpix_current_poly_coeffs       = coeffs;
+    mps_advanpix_current_poly_coeffs_size  = n + 1;
+    mps_advanpix_current_poly_n            = n;
+    mps_advanpix_current_poly_tag          = "mahler_extprec:full";
+    mps_advanpix_computation_failed        = 0;
+
     mps_mpsolve(s);
     error = mps_context_has_errors(s);
+    if(mps_advanpix_computation_failed)
+    {
+        // The defensive guard in mpsolve fired. Result is corrupted.
+        // Surface as a non-zero error so the verify path skips this poly
+        // rather than recording a wrong M(p).
+        error = error ? error : 1;
+    }
 
     if(error == 0)
     {

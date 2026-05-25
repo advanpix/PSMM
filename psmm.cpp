@@ -351,7 +351,21 @@ int main(int argc, char* argv[])
                     {
                         if(!item.skip)
                         {
-                            if(item.mahler > 1.0 && item.mahler <= threshold)
+                            if(item.mahler != item.mahler) // NaN check (avoids isnan macro collision)
+                            {
+                                // The Mahler-estimator returned NaN because mpsolve hit
+                                // the non-finite-rdpe path (mpsolve patch 0003 set the
+                                // failure flag). Log the polynomial with !!! prefix so
+                                // operators can pull it from the log and reproduce /
+                                // report upstream. DO NOT add to candidates -- using
+                                // a corrupted M(p) would silently mis-classify.
+                                printf("!!! NaN-from-mpsolve\t\t");
+                                printf("NNZ = %d\t[",item.nnz_value);
+                                for(size_t j = 0; j < item.coeffs.size()-1; j++) printf("%2d ",item.coeffs[j]);
+                                printf("%2d]\n",item.coeffs.back());
+                                fflush(stdout);
+                            }
+                            else if(item.mahler > 1.0 && item.mahler <= threshold)
                             {
                                 int known_before = same_polynomial_found(degree, item.mahler, search_tolerance, known);
 

@@ -11,6 +11,22 @@
 #ifndef PSMM_MAHLER_ESTIMATOR_H
 #define PSMM_MAHLER_ESTIMATOR_H
 
+#include <cmath>  // std::nan
+
+// Thread-local hooks exported by mpsolve patch
+// mpsolve/patches/0003-advanpix-defensive-mpf-set-rdpe.patch. We
+// REGISTER the polynomial being processed before each mps_*_mpsolve
+// call so the patch's diagnostic in mpf_set_rdpe can print the
+// offending polynomial, and we READ the failure flag after the call
+// to decide whether the mpsolve result is trustworthy.
+extern "C" {
+    extern __thread const int *  mps_advanpix_current_poly_coeffs;
+    extern __thread int          mps_advanpix_current_poly_coeffs_size;
+    extern __thread int          mps_advanpix_current_poly_n;
+    extern __thread const char * mps_advanpix_current_poly_tag;
+    extern __thread int          mps_advanpix_computation_failed;
+}
+
 inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, double threshold, int nthreads = 1, mps_context* reuse_ctx = nullptr)
 {
     //
@@ -19,6 +35,12 @@ inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& co
     //
     // If this happens, then returned value = 2*T, simply indicating that M(p) is above threshold.
     // Otherwise (if all roots have magnitude < T) then M(p) computed properly.
+    //
+    // If MPSolve hits the non-finite-rdpe bug (Advanpix patch 0003
+    // detects it and sets mps_advanpix_computation_failed), the
+    // function returns NaN. The caller MUST check std::isnan(...)
+    // and treat such polynomials as uncomputable (skip + log) rather
+    // than as below-threshold finds.
     //
     // When reuse_ctx != nullptr, the caller owns the context (pre-configured with output_prec / goal /
     // algorithm / concurrency). The function only creates+frees the polynomial. The threshold is set
@@ -47,8 +69,28 @@ inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& co
         mps_thread_pool_set_concurrency_limit (s, NULL, nthreads);
     }
 
+    // Register polynomial for the mpsolve diagnostic + reset failure flag.
+    // We register the HALF-coefficient vector (what PSMM keeps in memory);
+    // the diagnostic tag tells offline reproducer scripts to expand half->full
+    // before re-running.
+    mps_advanpix_current_poly_coeffs       = coeffs.data();
+    mps_advanpix_current_poly_coeffs_size  = (int) coeffs.size();
+    mps_advanpix_current_poly_n            = n;
+    mps_advanpix_current_poly_tag          = "estimate_mahler_d:half";
+    mps_advanpix_computation_failed        = 0;
+
     mps_mahler_set_threshold(threshold);
     mps_mahler_mpsolve(s);
+
+    // If the non-finite-rdpe path fired during this call, the mpsolve
+    // result is corrupted. Return NaN so the caller knows to skip +
+    // report the polynomial rather than use a wrong M(p).
+    if(mps_advanpix_computation_failed)
+    {
+        mps_polynomial_free (s, poly);
+        if(own_context) mps_context_free (s);
+        return std::nan("");
+    }
 
     double mahler (0.0);
     if(mps_mahler_is_over_threshold())
