@@ -486,6 +486,17 @@ int main(int argc, char* argv[])
                 //
                 if(candidate.F > 1)
                 {
+                    // Reject substitution polynomials P(x) = Q(x^d), d > 1:
+                    // M is inherited from Q at smaller degree (theorem
+                    // M(P(x^k)) = M(P)). The DB tracks minimal-degree
+                    // representatives only -- same rule as the merge stage
+                    // (polyhelpers.h, commit aa63b50). Belt-and-braces here:
+                    // emitting a substitution to -addto would be filtered
+                    // by the later merge, but should not be written in the
+                    // first place.
+                    if(is_substitution_polynomial(candidate.N, candidate.coeffs))
+                        continue;
+
                     // Strict (N, coeffs) + x->-x dedup. Was previously
                     // same_polynomial_found_m (M-within-precision), which
                     // silently dropped distinct polynomials whose Mahler
@@ -542,6 +553,12 @@ int main(int argc, char* argv[])
                                 //
                                 if(p.F > 1)
                                 {
+                                    // Reject substitution polynomials P(x) = Q(x^d),
+                                    // d > 1 (see comment at the earlier irreducible-
+                                    // path site above).
+                                    if(is_substitution_polynomial(p.N, p.coeffs))
+                                        continue;
+
                                     // Strict (N, coeffs) + x->-x dedup (see comment at the
                                     // earlier same_polynomial_by_coeffs site above).
                                     bool found = (same_polynomial_by_coeffs(p.N, p.coeffs, verified) == 1) ||
