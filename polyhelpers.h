@@ -301,14 +301,23 @@ inline void merge_files_with_results(const std::string& input, const std::string
         load_polynomials(filenames[i],polynomials,precision);
 
     // Sort list of merged polynomials by degree, tie-break by Mahler
-    // measure, final tie-break by coefficient vector (lexicographic).
-    // The coefficient tie-break is what makes the canonical-form choice
-    // for x->-x pairs deterministic and matches work/tools/safe_merge.py.
-    std::sort(polynomials.begin(),polynomials.end(),
+    // measure ONLY. Use stable_sort so that within a (N, M) group the
+    // input order is preserved -- the DB file passed first in the merge
+    // input list keeps its entries before any chunk's entries that share
+    // the same (N, M). This is what makes merge canonical-form-preserving
+    // (Rule 9 of the scan workflow): if DB has half=A and the chunk has
+    // half=B=xneg(A), they share (N, M); stable_sort keeps A first; the
+    // dedup loop below then drops the chunk's xneg flip via xneg_key.
+    //
+    // DO NOT add a coefficient-lex tiebreaker here. std::sort with such a
+    // tiebreaker would reorder {DB, chunk} pairs by lex and silently flip
+    // DB's canonical form whenever the chunk's variant is lex-smaller --
+    // see the 2026-05-26 chunk-0 incident (276 canonical forms flipped
+    // in place, breaking the roots/ invariant).
+    std::stable_sort(polynomials.begin(),polynomials.end(),
         [](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) {
             if(a.N != b.N) return a.N < b.N;
-            if(a.F != b.F) return a.F < b.F;
-            return a.coeffs < b.coeffs;
+            return a.F < b.F;
         });
 
     std::map<std::size_t,std::size_t> nresults;
@@ -320,11 +329,10 @@ inline void merge_files_with_results(const std::string& input, const std::string
     //
     // x -> -x flips of an existing entry are also collapsed here per Rule 9
     // of the scan workflow: P(x) and P(-x) share an equivalence class, and
-    // the DB stores exactly one representative. With the input sorted by
-    // (N asc, M asc), whichever variant appears first becomes the canonical
-    // form -- callers wanting a specific canonical form (e.g. Lehmer's
-    // classical "1 1 0 -1 -1 -1") must place the DB file with that form
-    // first in the merge input list so it loads before competing flips.
+    // the DB stores exactly one representative. Combined with the
+    // stable_sort above, whichever variant appears first in the merge input
+    // list wins -- so passing the DB file first preserves Lehmer's
+    // classical "1 1 0 -1 -1 -1" and every other entry's canonical form.
     //
     // The previous implementation used same_polynomial_found_m which deduped
     // by (p.N <= n, M within verify_precision) and silently dropped distinct

@@ -182,6 +182,93 @@ TEST_CASE("merge collapses x->-x flips of the same polynomial")
 }
 
 
+TEST_CASE("merge preserves the DB-loaded canonical form on x->-x ties (regression: 2026-05-26 chunk-0 incident)")
+{
+    // The 2026-05-26 incident: psmm -merge silently flipped 276 DB
+    // entries' canonical forms when a chunk's x->-x variant happened to
+    // be lex-smaller than the DB's. Root cause: the sort comparator
+    // tie-broke on coefficients lex AFTER (N, M), so lex-smaller always
+    // won regardless of which input file it came from.
+    //
+    // Required behaviour: with the DB file passed first in the merge
+    // input list, DB's canonical form must survive ANY x->-x flip
+    // appearing in later input files -- even when the flip is
+    // lex-smaller. This test bakes in that contract.
+
+    const std::string M_LEHMER =
+        "1.176280818259917506544070338474035050693415806564695259830106347029688377";
+
+    // DB has Lehmer in classical canonical form (lex-LARGER between
+    // {classical, x->-x flip}):
+    //   classical = [1,  1, 0, -1, -1, -1]
+    //   flip      = [1, -1, 0,  1, -1,  1]
+    // Comparing position-by-position: position 1 has 1 vs -1, so the
+    // flip is lex-smaller. Under the old buggy std::sort + lex
+    // tiebreaker, the flip would win even though DB was loaded first.
+    const std::vector<int> classical = {1,  1, 0, -1, -1, -1};
+    const std::vector<int> flipped   = {1, -1, 0,  1, -1,  1};
+
+    // Pre-flight sanity: flipped really is lex-smaller than classical.
+    REQUIRE(flipped < classical);
+    // And they are x->-x equivalence-class siblings.
+    REQUIRE(xneg_flip_half(classical) == flipped);
+
+    const std::string db_path  = tmp_path("dbfirst_db");
+    const std::string ch_path  = tmp_path("dbfirst_chunk");
+    const std::string out_path = tmp_path("dbfirst_out");
+
+    write_entries(db_path, {{10, M_LEHMER}}, {classical});
+    write_entries(ch_path, {{10, M_LEHMER}}, {flipped});
+
+    // Comma-separated input list: DB first, chunk second.
+    merge_files_with_results(db_path + "," + ch_path, out_path, 128, 72, 256);
+
+    auto rows = read_entries(out_path);
+    REQUIRE(rows.size() == 1);
+    const auto& [N, M, c] = rows[0];
+    CHECK(N == 10);
+    CHECK(c == classical);    // <-- DB canonical preserved (the regression target)
+    CHECK_FALSE(c == flipped);
+
+    std::filesystem::remove(db_path);
+    std::filesystem::remove(ch_path);
+    std::filesystem::remove(out_path);
+}
+
+
+TEST_CASE("merge: input order, not lex, decides x->-x canonical winner")
+{
+    // Symmetric companion to the previous test: feeding the same two
+    // files in REVERSED order must produce the OTHER variant. This
+    // confirms the merge respects insertion order rather than a fixed
+    // lex preference, so callers control the canonical via load order.
+
+    const std::string M_LEHMER =
+        "1.176280818259917506544070338474035050693415806564695259830106347029688377";
+
+    const std::vector<int> classical = {1,  1, 0, -1, -1, -1};
+    const std::vector<int> flipped   = {1, -1, 0,  1, -1,  1};
+
+    const std::string a_path   = tmp_path("inputorder_a");
+    const std::string b_path   = tmp_path("inputorder_b");
+    const std::string out_path = tmp_path("inputorder_out");
+
+    write_entries(a_path, {{10, M_LEHMER}}, {flipped});     // flip first
+    write_entries(b_path, {{10, M_LEHMER}}, {classical});   // classical second
+
+    merge_files_with_results(a_path + "," + b_path, out_path, 128, 72, 256);
+
+    auto rows = read_entries(out_path);
+    REQUIRE(rows.size() == 1);
+    const auto& [N, M, c] = rows[0];
+    CHECK(c == flipped);    // first-loaded wins, even though lex-smaller
+
+    std::filesystem::remove(a_path);
+    std::filesystem::remove(b_path);
+    std::filesystem::remove(out_path);
+}
+
+
 TEST_CASE("xneg_flip_half negates only odd-index entries")
 {
     std::vector<int> in = {1, 2, 3, 4, 5, 6};
