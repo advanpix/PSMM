@@ -28,7 +28,13 @@ extern "C" {
     extern __thread unsigned long mps_advanpix_diag_count;
 }
 
-inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, double threshold, int nthreads = 1, mps_context* reuse_ctx = nullptr)
+// IMPORTANT: nthreads default is 2 (not 1) to avoid the upstream MPSolve
+// SIGFPE bug at threads=1 (see work/incoming/MPSOLVE_BUG_REPORT.md and the
+// 2026-05-26 sweep at work/incoming/N470_reproducer.c). The bug fires on
+// specific high-degree sparse polynomials with many roots on the unit
+// circle when MPSolve runs single-threaded. MPSolve's internal multi-
+// threading is light enough that nthreads=2 doesn't measurably oversub.
+inline double estimate_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, double threshold, int nthreads = 2, mps_context* reuse_ctx = nullptr)
 {
     //
     // The function estimates Mahler measure of the reciprocal polynomial in double precision.

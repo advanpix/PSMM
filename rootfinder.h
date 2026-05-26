@@ -43,7 +43,7 @@ extern "C" {
 // Computes Mahler measure of the (general) polynomial with double precision accuracy.
 //
 
-inline double compute_mahler_general_polynomial_d(const std::vector<int>& coeffs, int nthreads = 1, mps_context* reuse_ctx = nullptr)
+inline double compute_mahler_general_polynomial_d(const std::vector<int>& coeffs, int nthreads = 2, mps_context* reuse_ctx = nullptr)
 {
     //
     // Find polynomial roots, compute Mahler measure for double precision.
@@ -165,7 +165,7 @@ inline double compute_mahler_general_polynomial_d(const std::vector<int>& coeffs
     return mahler;
 }
 
-inline double compute_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, int nthreads = 1, mps_context* reuse_ctx = nullptr)
+inline double compute_mahler_reciprocal_polynomial_d(const std::vector<int>& coeffs, int nthreads = 2, mps_context* reuse_ctx = nullptr)
 {
     //
     // The function computes Mahler measure of the reciprocal polynomial in double precision.
@@ -298,7 +298,7 @@ inline int mpsolve_compute_mahler_with_properties(mpf_ptr mahler,               
                                                   std::size_t& Q,                   // Number of complex non-unity roots (go in quadruplets): z = r*exp(i*t), z* = r*exp(-i*t), 1/z = (1/r)*exp(-i*t), 1/z* = (1/r)*exp(i*t).
                                                   std::size_t& R,                   // Number of real non-unity roots (go in pairs):          z = r, z = 1/r.
                                                   int target_precision = 256,       // Precision to use for root finding and analysis.
-                                                  int nthreads = 1                  // Number of threads to use in root finder.
+                                                  int nthreads = 2                  // Number of threads to use in root finder.
                                                  )
 {
     int error = 0;
