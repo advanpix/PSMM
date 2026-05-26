@@ -33,10 +33,19 @@ file(GLOB _mpsolve_patches CONFIGURE_DEPENDS
 list(SORT _mpsolve_patches)
 
 # Build a shell snippet that applies every patch in order from inside
-# <SOURCE_DIR>. Using `patch -p1 -N` makes re-builds idempotent.
+# <SOURCE_DIR>. We use `patch -p1 -N -r -` to forward-apply each patch
+# while ignoring hunks that are already in place. GNU patch returns:
+#   0 — every hunk applied,
+#   1 — at least one hunk was skipped (already-applied or rejected),
+#   2 — fatal error (can't find file to patch, malformed patch, etc.).
+# Re-runs of the patch step legitimately hit case 1 (every hunk is
+# already in the source tree from the previous run), so we treat exit
+# code 1 as success and only fail on 2+. Without this, retriggering the
+# patch step via ExternalProject_Add_StepDependencies (e.g. after
+# editing a patch file) would fail spuriously the second time around.
 set(_apply_patches_cmd "true")
 foreach(_p ${_mpsolve_patches})
-    set(_apply_patches_cmd "${_apply_patches_cmd} && patch -p1 -N -r - < ${_p}")
+    set(_apply_patches_cmd "${_apply_patches_cmd} && ( patch -p1 -N -r - < ${_p} || [ $? -eq 1 ] )")
 endforeach()
 
 # MPSolve's configure doesn't accept --disable-ui cleanly in all versions,
@@ -76,6 +85,46 @@ ExternalProject_Add(mpsolve_ext
     LOG_CONFIGURE     ON
     LOG_BUILD         ON
     LOG_INSTALL       ON
+)
+
+# Invalidate the download step (which performs extract) whenever any
+# patch file changes. Without this, ExternalProject caches the patch
+# stamp once and never re-applies — so editing or adding a patch
+# would silently be ignored. CONFIGURE_DEPENDS on the GLOB above
+# only triggers cmake reconfigure; it does not by itself invalidate
+# the patch stamp.
+#
+# Why depend on `download`, not `patch`? GNU `patch -p1 -N` is not
+# truly idempotent: when re-run against an already-patched tree, its
+# fuzz-match heuristic can find spurious second locations to apply
+# (we observed patch 0001 silently producing duplicate function
+# definitions on re-run). Forcing the download step to re-run gives
+# us a freshly-extracted pristine source tree, on which all patches
+# apply cleanly exactly once. Re-extract is essentially free —
+# URL_HASH ensures the cached tarball is reused without a network
+# fetch.
+ExternalProject_Add_StepDependencies(mpsolve_ext download ${_mpsolve_patches})
+
+# Convenience target: force a full MPSolve rebuild from the cached
+# tarball. Use this if the source/install tree gets into a bad state,
+# or as a definitive "the patches really did re-apply" reset. Running
+# `make mpsolve_force_rebuild` is equivalent to deleting
+# build/mpsolve-ext + build/mpsolve-install and rebuilding.
+#
+# IMPORTANT (CMake gotcha): ExternalProject_Add bundles extract into
+# the download step, so deleting only the extracted source dir
+# (mpsolve-ext/src/mpsolve_ext) is not enough -- the mpsolve_ext-download
+# stamp must also be invalidated, otherwise the next build will jump
+# straight to the patch step against an empty source tree and fail
+# with "can't find file to patch". This target invalidates both.
+add_custom_target(mpsolve_force_rebuild
+    COMMAND ${CMAKE_COMMAND} -E rm -rf
+            ${CMAKE_BINARY_DIR}/mpsolve-ext
+            ${CMAKE_BINARY_DIR}/mpsolve-install
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target mpsolve_ext
+    COMMENT "Force full MPSolve re-download + re-extract + re-patch + rebuild"
+    USES_TERMINAL
+    VERBATIM
 )
 
 file(MAKE_DIRECTORY ${_mpsolve_include})
