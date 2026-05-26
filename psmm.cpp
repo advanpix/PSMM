@@ -320,9 +320,9 @@ int main(int argc, char* argv[])
                                     if(!item.skip)
                                     {
 #ifdef USE_FAST_MAHLER_ESTIMATOR
-                                        item.mahler = estimate_mahler_reciprocal_polynomial_d(item.coeffs, threshold, /*mpsolve_threads=*/2);
+                                        item.mahler = estimate_mahler_reciprocal_polynomial_d(item.coeffs, threshold, /*mpsolve_threads=*/1);
 #else
-                                        item.mahler = compute_mahler_reciprocal_polynomial_d(item.coeffs, /*mpsolve_threads=*/2);
+                                        item.mahler = compute_mahler_reciprocal_polynomial_d(item.coeffs, /*mpsolve_threads=*/1);
 #endif
                                     }
                                 }
@@ -338,9 +338,9 @@ int main(int argc, char* argv[])
                             if(!item.skip)
                             {
 #ifdef USE_FAST_MAHLER_ESTIMATOR
-                                item.mahler = estimate_mahler_reciprocal_polynomial_d(item.coeffs, threshold, /*mpsolve_threads=*/2);
+                                item.mahler = estimate_mahler_reciprocal_polynomial_d(item.coeffs, threshold, /*mpsolve_threads=*/1);
 #else
-                                item.mahler = compute_mahler_reciprocal_polynomial_d(item.coeffs, /*mpsolve_threads=*/2);
+                                item.mahler = compute_mahler_reciprocal_polynomial_d(item.coeffs, /*mpsolve_threads=*/1);
 #endif
                             }
                         }

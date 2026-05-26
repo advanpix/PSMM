@@ -1,0 +1,51 @@
+Backport upstream fix: check root radius for NaN/Inf after fnewton in
+the standard-FP path of mps_thread_fpolzer_worker.
+
+Without this guard, when the standard floating-point Newton iteration
+in mps_thread_fpolzer_worker produces a correction that is finite but
+the associated root inclusion-radius (root[i]->frad) overflows to NaN
+or Inf, MPSolve proceeds with that bad radius and SIGFPEs downstream.
+The bug was deterministic at -j1 (single worker thread) and effectively
+invisible at -j>=2 because the multi-block iteration order changed the
+specific root index that hit the overflow.
+
+Reported by Advanpix via the N=470 reproducer
+(work/incoming/N470_bug.pol, work/incoming/MPSOLVE_BUG_REPORT.md).
+Fixed upstream by Leonardo Robol on 2026-05-26 in commit 282b77c on
+the master branch; will ship in MPSolve 3.2.3. Quote from the author:
+
+  "Apparently, the dynamics of Newton's iteration is different
+   (which makes sense, because the order is not deterministic and
+   the roots are updated in blocks), and this somewhat avoided the
+   problem with computing the radius for the root number 118, which
+   was overflowing. Note that this is something that could happen,
+   and a check was in place to switch to DPE arithmetic which has a
+   longer exponent. Unfortunately, the check only looked at the
+   approximation and not the radius. I have now changed this."
+
+This patch is a strict subset of upstream 282b77c: it includes only
+the src/libmps/monomial/monomial-threading.c hunk and omits the
+configure.ac version bump (still labelled 3.2.2 in the tarball we
+pin). Once we bump PSMM_MPSOLVE_COMMIT to 3.2.3, this patch can be
+removed.
+
+Upstream: https://github.com/robol/MPSolve/commit/282b77c25667257b20a0d4d680e82da61ffb49a1
+Author: Leonardo Robol <leo@robol.it>
+
+diff --git a/src/libmps/monomial/monomial-threading.c b/src/libmps/monomial/monomial-threading.c
+index 590971d2..dc8af875 100644
+--- a/src/libmps/monomial/monomial-threading.c
++++ b/src/libmps/monomial/monomial-threading.c
+@@ -62,10 +62,11 @@ mps_thread_fpolzer_worker (void *data_ptr)
+ 
+           mps_polynomial_fnewton (s, p, s->root[i], corr);
+ 
+-	  if (cplx_check_fpe (corr))
++	  if (cplx_check_fpe (corr) || isnan(s->root[i]->frad) || isinf(s->root[i]->frad))
+ 	    {
+ 	      /* If we get a floating point exception we need to switch to DPE
+ 	       * arithmetic. */
++        MPS_DEBUG (s, "Floating point exception detected, switching to DPE arithmetic");
+ 	      s->root[i]->frad = rad1;
+ 	      s->skip_float = true;
+ 	      s->root[i]->again = false;
