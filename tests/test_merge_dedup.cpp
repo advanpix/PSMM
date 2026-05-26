@@ -117,7 +117,10 @@ TEST_CASE("merge preserves distinct polynomials with coincident Mahler measure")
     };
     std::vector<std::vector<int>> coeffs = {
         {1, 1, 0, -1, -1, -1},                     // Lehmer half (N=10)
-        {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, -1},        // N=20 placeholder (distinct half)
+        {1, 1, 0,  0, 0,  0, 0, 0, 0, 0, 1},       // N=20 placeholder (primitive,
+                                                   // not a substitution: full
+                                                   // positions {0,1,10,19,20},
+                                                   // gcd = 1)
         {1, 0, 0, 1, 0, 1},                        // N=10 distinct half
     };
 
@@ -315,6 +318,117 @@ TEST_CASE("merge: input order, not lex, decides x->-x canonical winner")
 
     std::filesystem::remove(a_path);
     std::filesystem::remove(b_path);
+    std::filesystem::remove(out_path);
+}
+
+
+TEST_CASE("is_substitution_polynomial: detects P(x) = Q(x^d) for d > 1")
+{
+    // Cyclotomic-like edge cases. We don't care that these are cyclotomic
+    // (M = 1); the helper is pure-syntactic, just looking at gcd of
+    // nonzero coefficient positions.
+
+    // x^N + 1 (positions {0, N}, gcd = N) -- a substitution for N >= 2.
+    CHECK(is_substitution_polynomial(2,  {1, 0}));
+    CHECK(is_substitution_polynomial(20, {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1}));
+
+    // Phi_3(x^2) = x^4 + x^2 + 1 (positions {0, 2, 4}, gcd = 2).
+    CHECK(is_substitution_polynomial(4, {1, 0, 1}));
+
+    // Phi_3 itself = x^2 + x + 1 (positions {0, 1, 2}, gcd = 1).
+    CHECK_FALSE(is_substitution_polynomial(2, {1, 1}));
+
+    // Lehmer (positions {0, 1, 3, 4, 5, 6, 7, 9, 10}, gcd = 1).
+    const std::vector<int> lehmer = {1, 1, 0, -1, -1, -1};
+    CHECK_FALSE(is_substitution_polynomial(10, lehmer));
+
+    // Lehmer(x^2) at N=20 (positions {0, 2, 6, 8, 10, 12, 14, 18, 20},
+    // gcd = 2). The canonical example -- this is the substitution that
+    // showed up in the 2026-05-26 chunk-merge incident.
+    const std::vector<int> lehmer_sq = {1, 0, 1, 0, 0, 0, -1, 0, -1, 0, -1};
+    CHECK(is_substitution_polynomial(20, lehmer_sq));
+
+    // Lehmer(-x^2) at N=20 (positions same as above, gcd = 2).
+    const std::vector<int> lehmer_msq = {1, 0, -1, 0, 0, 0, 1, 0, -1, 0, 1};
+    CHECK(is_substitution_polynomial(20, lehmer_msq));
+
+    // Lehmer(x^3) at N=30 (positions {0, 3, 9, 12, 15, 18, 21, 27, 30},
+    // gcd = 3).
+    std::vector<int> lehmer_cu(16, 0);
+    lehmer_cu[0] = 1; lehmer_cu[3] = 1;
+    lehmer_cu[9] = -1; lehmer_cu[12] = -1; lehmer_cu[15] = -1;
+    CHECK(is_substitution_polynomial(30, lehmer_cu));
+
+    // Synthetic primitive at N=12 with positions {0, 1, 5, 6, 7, 11, 12}
+    // (gcd = 1).
+    CHECK_FALSE(is_substitution_polynomial(12, {1, 1, 0, 0, 0, 1, 1}));
+}
+
+
+TEST_CASE("merge rejects Lehmer(x^2) substitution at N=20")
+{
+    // Regression target for the 2026-05-26 chunk-merge incident: chunks 0..6
+    // emitted 53 Lehmer-M entries at N in {20, 30, 40, ..., 360} via
+    // factor_5term_reducibles.py extracting Lehmer(x^k) factors from
+    // reducible 5-term parents. M(Lehmer(x^k)) = M(Lehmer) is no new
+    // mathematical information; the merge must drop these.
+
+    const std::string M_LEHMER =
+        "1.176280818259917506544070338474035050693415806564695259830106347029688377";
+
+    std::vector<std::pair<std::size_t, std::string>> meta = {
+        {20, M_LEHMER},  // Lehmer(x^2)
+        {20, M_LEHMER},  // Lehmer(-x^2)
+    };
+    std::vector<std::vector<int>> coeffs = {
+        {1, 0,  1, 0, 0, 0, -1, 0, -1, 0, -1},
+        {1, 0, -1, 0, 0, 0,  1, 0, -1, 0,  1},
+    };
+
+    const std::string in_path  = tmp_path("subst_in");
+    const std::string out_path = tmp_path("subst_out");
+    write_entries(in_path, meta, coeffs);
+
+    merge_files_with_results(in_path, out_path, 128, 72, 256);
+
+    auto rows = read_entries(out_path);
+    CHECK(rows.empty());   // both inputs are substitutions -> nothing emitted
+
+    std::filesystem::remove(in_path);
+    std::filesystem::remove(out_path);
+}
+
+
+TEST_CASE("merge keeps Lehmer (primitive) and rejects its x^2 substitution in a mixed input")
+{
+    const std::string M_LEHMER =
+        "1.176280818259917506544070338474035050693415806564695259830106347029688377";
+
+    std::vector<std::pair<std::size_t, std::string>> meta = {
+        {10, M_LEHMER},  // Lehmer (primitive)
+        {20, M_LEHMER},  // Lehmer(x^2) (substitution)
+        {30, M_LEHMER},  // Lehmer(x^3) (substitution)
+    };
+    std::vector<std::vector<int>> coeffs = {
+        {1, 1, 0, -1, -1, -1},                             // Lehmer
+        {1, 0, 1, 0, 0, 0, -1, 0, -1, 0, -1},              // Lehmer(x^2)
+        {1, 0, 0, 1, 0, 0, 0, 0, 0,
+         -1, 0, 0, -1, 0, 0, -1},                          // Lehmer(x^3)
+    };
+
+    const std::string in_path  = tmp_path("primsub_in");
+    const std::string out_path = tmp_path("primsub_out");
+    write_entries(in_path, meta, coeffs);
+
+    merge_files_with_results(in_path, out_path, 128, 72, 256);
+
+    auto rows = read_entries(out_path);
+    REQUIRE(rows.size() == 1);
+    const auto& [N, M, c] = rows[0];
+    CHECK(N == 10);
+    CHECK(c == coeffs[0]);
+
+    std::filesystem::remove(in_path);
     std::filesystem::remove(out_path);
 }
 

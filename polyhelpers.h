@@ -11,6 +11,7 @@
 #ifndef __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 #define __PSMM_POLYNOMIAL_HELPER_FUNCTIONS_H__
 
+#include <numeric>
 #include <set>
 #include <utility>
 
@@ -24,6 +25,41 @@ inline std::vector<int> xneg_flip_half(const std::vector<int>& half)
     for(std::size_t j = 0; j < out.size(); ++j)
         if(j & 1) out[j] = -out[j];
     return out;
+}
+
+// Returns true if the palindromic polynomial of degree N with
+// half-coefficients `half` is a non-trivial substitution P(x) = Q(x^d)
+// for some d > 1, where Q is a polynomial of smaller degree N/d.
+//
+// Why this matters for the DB: Mahler measure is invariant under the
+// substitution x -> x^k for any k >= 1, so M(P(x)) = M(Q(x)) -- P
+// inherits its Mahler measure entirely from Q. The DB tracks minimal-
+// degree representatives only; substitutions are rejected at merge
+// time because they would inflate counts and double-list the same
+// Mahler measure across degrees (e.g. Lehmer's polynomial at N=10
+// AND Lehmer(x^2) at N=20 AND Lehmer(x^3) at N=30 ... all sharing
+// M ~= 1.1763).
+//
+// Detection: P is a substitution iff gcd of positions of nonzero
+// coefficients in the FULL polynomial is > 1. For our entries
+// a[0] = a[N] = 1 always, so N is always a nonzero position; we
+// initialise the gcd with N and iterate the half-indices 1..N/2.
+// Mirror positions N-k contribute no new constraint once d divides N
+// (since d | N and d | k => d | (N-k)). We early-exit as soon as d
+// hits 1 -- any further nonzero half-coefficient cannot change that.
+inline bool is_substitution_polynomial(std::size_t N,
+                                       const std::vector<int>& half)
+{
+    std::size_t d = N;
+    for(std::size_t k = 1; k < half.size(); ++k)
+    {
+        if(half[k] != 0)
+        {
+            d = std::gcd(d, k);
+            if(d == 1) return false;
+        }
+    }
+    return d > 1;
 }
 
 // STRICT dedup predicate: returns 1 if any entry in `polynomials` has
@@ -343,11 +379,31 @@ inline void merge_files_with_results(const std::string& input, const std::string
     // dropped distinct higher-degree entries whenever a lower-degree
     // entry with coincident M was merged. See commit bc1e760 for the
     // 2026-05-25 incident.
+    // Reject substitutions BEFORE the (N, coeffs) + x->-x dedup: P(x) = Q(x^d)
+    // for some d > 1 inherits its Mahler measure from a smaller-degree Q,
+    // by the substitution-invariance theorem M(P(x^k)) = M(P(x)). The DB
+    // tracks minimal-degree representatives only -- accepting a substitution
+    // would duplicate the Mahler measure already represented by Q at lower N
+    // (whether Q is in the DB or not is immaterial; M(Q) is implied).
+    //
+    // Before this filter (introduced 2026-05-26 after the chunk-merge
+    // session that found 53 Lehmer-M substitutions at degrees 20..360 had
+    // entered the DB), the merge mode let any irreducible reciprocal poly
+    // pass; the earlier (pre-e0340eb) M-tolerance dedup happened to block
+    // most substitutions as a side-effect since M(Q(x^d)) == M(Q(x)),
+    // collapsing them with Q's entry. The new (N, coeffs)-only dedup
+    // doesn't.
+    std::size_t n_substitution = 0;
     std::vector<reciprocal_polynomial_t> verified;
     std::set<std::pair<std::size_t, std::vector<int>>> seen_keys;
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
         reciprocal_polynomial_t& p = polynomials[i];
+        if(is_substitution_polynomial(p.N, p.coeffs))
+        {
+            ++n_substitution;
+            continue;
+        }
         std::pair<std::size_t, std::vector<int>> key(p.N, p.coeffs);
         std::pair<std::size_t, std::vector<int>> xneg_key(p.N, xneg_flip_half(p.coeffs));
         if(seen_keys.count(key)      != 0) continue;  // exact (N, coeffs) duplicate
@@ -355,6 +411,11 @@ inline void merge_files_with_results(const std::string& input, const std::string
         seen_keys.insert(key);
         verified.push_back(p);
         nresults[p.N]++;
+    }
+    if(n_substitution > 0)
+    {
+        printf("Rejected %zu substitution polynomials (P(x) = Q(x^d), d > 1).\n",
+               n_substitution);
     }
 
     // Pass 3: sort the deduped result by (N asc, M asc) for clean
@@ -371,13 +432,13 @@ inline void merge_files_with_results(const std::string& input, const std::string
             return a.F < b.F;
         });
 
-    if(verified.size() > 0)
+    // Always create the output file (even if `verified` is empty) so callers
+    // can rely on its presence as a "merge ran" signal. Distinguishing
+    // "no inputs" from "all inputs were substitutions" is a log concern,
+    // not a file-existence concern.
+    if(!output.empty())
     {
-        FILE* foutput = NULL;
-
-        if(!output.empty())
-            foutput = fopen(output.c_str(),"w"); // Re-writes existing file
-
+        FILE* foutput = fopen(output.c_str(),"w"); // Re-writes existing file
         if(foutput != NULL)
         {
             int previous = 0;
