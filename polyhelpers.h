@@ -300,44 +300,49 @@ inline void merge_files_with_results(const std::string& input, const std::string
     for(std::size_t i = 0; i < filenames.size(); i++)
         load_polynomials(filenames[i],polynomials,precision);
 
-    // Sort list of merged polynomials by degree, tie-break by Mahler
-    // measure ONLY. Use stable_sort so that within a (N, M) group the
-    // input order is preserved -- the DB file passed first in the merge
-    // input list keeps its entries before any chunk's entries that share
-    // the same (N, M). This is what makes merge canonical-form-preserving
-    // (Rule 9 of the scan workflow): if DB has half=A and the chunk has
-    // half=B=xneg(A), they share (N, M); stable_sort keeps A first; the
-    // dedup loop below then drops the chunk's xneg flip via xneg_key.
+    // Two-pass design: dedup under load order first, then sort the
+    // deduped result for output. We must NOT sort by M before dedup
+    // because two independent computations of the same polynomial's
+    // Mahler measure (e.g. a DB entry computed during the original
+    // scan vs. its x->-x flip computed by a new scan) agree only to
+    // ~10^-50 -- the last ~14 of the 72 fractional digits stored in
+    // the DB are numerical noise. If we sorted by M, that noise would
+    // determine which variant wins on the (N, M) tie, silently flipping
+    // DB's canonical form for x->-x duplicates whose chunk-side M
+    // happens to compare smaller. See the 2026-05-26 chunk-5 incident
+    // (2 canonical flips at N=360 and N=364 after the chunk-0 fix
+    // (commit fb98bbd) only sorted by (N, M)).
     //
-    // DO NOT add a coefficient-lex tiebreaker here. std::sort with such a
-    // tiebreaker would reorder {DB, chunk} pairs by lex and silently flip
-    // DB's canonical form whenever the chunk's variant is lex-smaller --
-    // see the 2026-05-26 chunk-0 incident (276 canonical forms flipped
-    // in place, breaking the roots/ invariant).
+    // Pass 1: stable_sort by N only. Within each N, input order is
+    // preserved exactly. Since the merge input list is always
+    // (AllKnownAdvanpix, new_finds_1, new_finds_2, ...), DB entries
+    // come before any chunk's entries at the same N regardless of how
+    // their numerically-computed M values compare.
     std::stable_sort(polynomials.begin(),polynomials.end(),
         [](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) {
-            if(a.N != b.N) return a.N < b.N;
-            return a.F < b.F;
+            return a.N < b.N;
         });
 
     std::map<std::size_t,std::size_t> nresults;
 
-    // Dedup by (degree, half-coefficients) -- distinct polynomials sharing
-    // only their Mahler measure (e.g. an irreducible Salem and a higher-N
-    // polynomial whose factorisation includes the Salem) are NOT duplicates
-    // and must both be preserved, regardless of which degree is smaller.
+    // Pass 2: dedup by (degree, half-coefficients) -- distinct
+    // polynomials sharing only their Mahler measure (e.g. an
+    // irreducible Salem and a higher-N polynomial whose factorisation
+    // includes the Salem) are NOT duplicates and must both be
+    // preserved, regardless of which degree is smaller.
     //
-    // x -> -x flips of an existing entry are also collapsed here per Rule 9
-    // of the scan workflow: P(x) and P(-x) share an equivalence class, and
-    // the DB stores exactly one representative. Combined with the
-    // stable_sort above, whichever variant appears first in the merge input
-    // list wins -- so passing the DB file first preserves Lehmer's
-    // classical "1 1 0 -1 -1 -1" and every other entry's canonical form.
+    // x -> -x flips of an existing entry are collapsed here per
+    // Rule 9 of the scan workflow: P(x) and P(-x) share an
+    // equivalence class, and the DB stores exactly one representative.
+    // With the load-order-preserving sort above, the DB's variant
+    // (loaded first) always wins -- even when the chunk's variant
+    // has a slightly different numerical M.
     //
-    // The previous implementation used same_polynomial_found_m which deduped
-    // by (p.N <= n, M within verify_precision) and silently dropped distinct
-    // higher-degree entries whenever a lower-degree entry with coincident M
-    // was merged. See commit bc1e760 for the 2026-05-25 incident.
+    // The previous implementation used same_polynomial_found_m which
+    // deduped by (p.N <= n, M within verify_precision) and silently
+    // dropped distinct higher-degree entries whenever a lower-degree
+    // entry with coincident M was merged. See commit bc1e760 for the
+    // 2026-05-25 incident.
     std::vector<reciprocal_polynomial_t> verified;
     std::set<std::pair<std::size_t, std::vector<int>>> seen_keys;
     for(std::size_t i = 0; i < polynomials.size(); i++)
@@ -351,6 +356,20 @@ inline void merge_files_with_results(const std::string& input, const std::string
         verified.push_back(p);
         nresults[p.N]++;
     }
+
+    // Pass 3: sort the deduped result by (N asc, M asc) for clean
+    // output ordering. By this point each equivalence class has been
+    // collapsed to exactly one representative, so the M-tiebreak
+    // never selects between x->-x flips -- it just orders distinct
+    // polynomials cleanly within each N section. Use std::stable_sort
+    // (not std::sort) so that two distinct polynomials with identical
+    // M (after rounding) keep their relative load order, making the
+    // output fully deterministic given a fixed input ordering.
+    std::stable_sort(verified.begin(),verified.end(),
+        [](const reciprocal_polynomial_t& a,const reciprocal_polynomial_t& b) {
+            if(a.N != b.N) return a.N < b.N;
+            return a.F < b.F;
+        });
 
     if(verified.size() > 0)
     {

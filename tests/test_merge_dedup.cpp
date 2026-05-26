@@ -236,6 +236,56 @@ TEST_CASE("merge preserves the DB-loaded canonical form on x->-x ties (regressio
 }
 
 
+TEST_CASE("merge preserves DB canonical when chunk's M differs from DB's M in trailing digits (regression: 2026-05-26 chunk-5 incident)")
+{
+    // The 2026-05-26 chunk-5 incident: two independent computations of
+    // the same Salem polynomial's Mahler measure (one stored in DB, one
+    // produced by a chunk's factor-extract gp script) agreed to ~58
+    // digits but disagreed in the last ~14 digits of the 72-digit DB
+    // representation -- numerical noise in polroots / product
+    // accumulation, well below mathematical precision.
+    //
+    // The previous fix (stable_sort by (N, M)) compared M values as
+    // distinct mpf_class values, so the chunk's numerically-smaller M
+    // won the (N, M) tie and the dedup loop kept its variant -- silently
+    // flipping the DB's canonical form for N=360 and N=364 entries.
+    //
+    // Required behaviour: the dedup must be insensitive to which M
+    // happens to compare smaller; DB-first load order alone must
+    // decide the canonical winner.
+
+    const std::string M_DB    = "1.286064060828527341744981552316574468868715681272040281234709142108360955";
+    const std::string M_CHUNK = "1.286064060828527341744981552316574468868715681272040281234702977688015002";
+    // M_CHUNK < M_DB by ~6e-58 -- well below the numerical floor of
+    // the underlying polroots computation.
+
+    // Use small N with a non-self-reciprocal half so we have a real
+    // x->-x flip to test. Two halves below are xneg_flip_half siblings.
+    const std::vector<int> classical = {1,  1, 0, -1, -1, -1};   // N=10
+    const std::vector<int> flipped   = {1, -1, 0,  1, -1,  1};
+    REQUIRE(xneg_flip_half(classical) == flipped);
+
+    const std::string db_path  = tmp_path("mprec_db");
+    const std::string ch_path  = tmp_path("mprec_chunk");
+    const std::string out_path = tmp_path("mprec_out");
+
+    write_entries(db_path,  {{10, M_DB}},    {classical});
+    write_entries(ch_path,  {{10, M_CHUNK}}, {flipped});    // CHUNK has SMALLER M
+
+    merge_files_with_results(db_path + "," + ch_path, out_path, 128, 72, 256);
+
+    auto rows = read_entries(out_path);
+    REQUIRE(rows.size() == 1);
+    const auto& [N, M, c] = rows[0];
+    CHECK(c == classical);    // DB canonical preserved despite smaller M_CHUNK
+    CHECK_FALSE(c == flipped);
+
+    std::filesystem::remove(db_path);
+    std::filesystem::remove(ch_path);
+    std::filesystem::remove(out_path);
+}
+
+
 TEST_CASE("merge: input order, not lex, decides x->-x canonical winner")
 {
     // Symmetric companion to the previous test: feeding the same two
