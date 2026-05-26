@@ -476,41 +476,44 @@ int main(int argc, char* argv[])
 
             if(irreducible)
             {
+                // SUBSTITUTION CHECK FIRST (cheap, before expensive
+                // polroots). If candidate = Q(x^d) for d > 1, reduce
+                // to Q. Q inherits M from candidate but at smaller
+                // degree -- the DB tracks minimal-degree representatives,
+                // so we verify/emit Q rather than the substituted form.
                 //
-                // Compute detailed properties of the candidate and add it to the verified list.
-                //
-                compute_all_properties_of_reciprocal_polynomial(candidate,extended_prec,nthreads);
-
-                //
-                // Do the last verification step in extended precision.
-                //
-                if(candidate.F > 1)
+                // ORDER OF OPERATIONS: cheap substitution + dedup checks
+                // come BEFORE compute_all_properties_of_reciprocal_polynomial
+                // (which runs mpsolve polroots at extended precision and
+                // is the bottleneck). For Q's that are already in DB, we
+                // skip polroots entirely.
+                std::size_t d = substitution_degree(candidate.N, candidate.coeffs);
+                reciprocal_polynomial_t Q;
+                reciprocal_polynomial_t* check = &candidate;
+                if(d > 1)
                 {
-                    // Reject substitution polynomials P(x) = Q(x^d), d > 1:
-                    // M is inherited from Q at smaller degree (theorem
-                    // M(P(x^k)) = M(P)). The DB tracks minimal-degree
-                    // representatives only -- same rule as the merge stage
-                    // (polyhelpers.h, commit aa63b50). Belt-and-braces here:
-                    // emitting a substitution to -addto would be filtered
-                    // by the later merge, but should not be written in the
-                    // first place.
-                    if(is_substitution_polynomial(candidate.N, candidate.coeffs))
-                        continue;
+                    reduce_substitution(candidate.N, candidate.coeffs, d, Q.coeffs);
+                    Q.N = candidate.N / d;
+                    check = &Q;
+                }
 
-                    // Strict (N, coeffs) + x->-x dedup. Was previously
-                    // same_polynomial_found_m (M-within-precision), which
-                    // silently dropped distinct polynomials whose Mahler
-                    // measures coincided with a lower-degree DB entry --
-                    // same bug shape as the 2026-05-25 merge incident.
-                    bool found = (same_polynomial_by_coeffs(candidate.N, candidate.coeffs, verified) == 1) ||
-                                 (same_polynomial_by_coeffs(candidate.N, candidate.coeffs, known   ) == 1);
+                // Cheap (N, coeffs) + x->-x dedup against verified and known.
+                bool found = (same_polynomial_by_coeffs(check->N, check->coeffs, verified) == 1) ||
+                             (same_polynomial_by_coeffs(check->N, check->coeffs, known   ) == 1);
+                if(found) continue;
 
-                    if(!found)
-                    {
-                        verified.push_back(candidate);
-                        success_irreducible_polynomials++;
-                        success_factors_total++;
-                    }
+                // EXPENSIVE: compute properties of `check` (Q if
+                // substitution, candidate otherwise) via polroots.
+                compute_all_properties_of_reciprocal_polynomial(*check, extended_prec, nthreads);
+
+                //
+                // Final verification step in extended precision.
+                //
+                if(check->F > 1)
+                {
+                    verified.push_back(*check);
+                    success_irreducible_polynomials++;
+                    success_factors_total++;
                 }
             }
             else
@@ -531,12 +534,18 @@ int main(int argc, char* argv[])
 
                     if(mahler > 1.0 && mahler <= threshold)
                     {
-                        // Search if any of known polynomials have the same Mahler measure.
+                        // Fast M-tolerance pre-filter (uses the
+                        // rough double-precision mahler from above):
+                        // if a known DB entry has matching M, skip
+                        // this factor without paying for the strict
+                        // (N, coeffs) check or compute_all_properties.
+                        // This naturally catches substitution factors
+                        // F = Q(x^d) when Q is already in DB
+                        // (M(F) = M(Q) within tolerance).
                         int known_before = same_polynomial_found(degree, mahler, search_tolerance, known);
 
                         if(known_before == 0)
                         {
-                            // Search if any of computed polynomials have the same Mahler measure.
                             int verified_found_before = same_polynomial_found(degree, mahler, search_tolerance, verified);
 
                             if(verified_found_before == 0)
@@ -546,29 +555,43 @@ int main(int argc, char* argv[])
                                 p.N  = degree;
                                 p.coeffs.assign(&factor[0],&factor[degree/2+1]);
 
-                                compute_all_properties_of_reciprocal_polynomial(p,extended_prec,nthreads);
-
-                                //
-                                // Do the last verification step in extended precision.
-                                //
-                                if(p.F > 1)
+                                // Substitution check FIRST (cheap).
+                                // If F is a substitution Q(x^d), reduce
+                                // to Q. Q has same M as F but smaller
+                                // degree -- the canonical form. We dedup
+                                // and verify Q, not F. Mirrors the
+                                // irreducible-path logic above.
+                                std::size_t d = substitution_degree(p.N, p.coeffs);
+                                reciprocal_polynomial_t Q;
+                                reciprocal_polynomial_t* check = &p;
+                                if(d > 1)
                                 {
-                                    // Reject substitution polynomials P(x) = Q(x^d),
-                                    // d > 1 (see comment at the earlier irreducible-
-                                    // path site above).
-                                    if(is_substitution_polynomial(p.N, p.coeffs))
-                                        continue;
+                                    reduce_substitution(p.N, p.coeffs, d, Q.coeffs);
+                                    Q.N = p.N / d;
+                                    check = &Q;
+                                }
 
-                                    // Strict (N, coeffs) + x->-x dedup (see comment at the
-                                    // earlier same_polynomial_by_coeffs site above).
-                                    bool found = (same_polynomial_by_coeffs(p.N, p.coeffs, verified) == 1) ||
-                                                 (same_polynomial_by_coeffs(p.N, p.coeffs, known   ) == 1);
+                                // Cheap (N, coeffs) + x->-x dedup
+                                // BEFORE expensive compute_all_properties.
+                                // For substitutions whose Q is already in
+                                // DB but slipped past the M-tolerance
+                                // pre-filter (e.g. Q's x->-x flip), this
+                                // catches them without paying for polroots.
+                                bool found = (same_polynomial_by_coeffs(check->N, check->coeffs, verified) == 1) ||
+                                             (same_polynomial_by_coeffs(check->N, check->coeffs, known   ) == 1);
+                                if(found) continue;
 
-                                    if(!found)
-                                    {
-                                        verified.push_back(p);
-                                        success_factors_total++;
-                                    }
+                                // EXPENSIVE: compute properties on
+                                // `check` (Q if substitution, p otherwise).
+                                compute_all_properties_of_reciprocal_polynomial(*check, extended_prec, nthreads);
+
+                                //
+                                // Final verification step in extended precision.
+                                //
+                                if(check->F > 1)
+                                {
+                                    verified.push_back(*check);
+                                    success_factors_total++;
                                 }
                             }
                         }
