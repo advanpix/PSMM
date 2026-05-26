@@ -30,6 +30,16 @@ import time
 from decimal import Decimal, ROUND_HALF_EVEN, getcontext
 from pathlib import Path
 
+# Shared factor-extract helpers. tools/factor_5term_reducibles.py exposes
+# these at module level (guarded by `if __name__ == "__main__":`); we
+# reuse them here to do inline factoring of reducible parents rather than
+# leaving them for a separate backfill pass.
+from factor_5term_reducibles import (
+    gp_factor_script,
+    parse_gp_output,
+    db_line_for_factor,
+)
+
 REPO = Path(__file__).resolve().parent.parent
 
 DB_MAHLER_DIGITS = 72
@@ -284,21 +294,69 @@ def main():
                         roots_f.write("\n")
 
                     # For reducible cases (irr == 0) within the M log range,
-                    # factor P and emit each non-cyclotomic palindromic
-                    # factor. See tools/factor_5term_reducibles.py for the
-                    # batch implementation; this online version is a hook
-                    # for future scans that want to capture factor-extracts
-                    # as they go rather than backfilling afterwards.
-                    # Currently a no-op stub — factor_5term_reducibles.py
-                    # handles the backfill flow.
+                    # factor P over Z inline and emit each non-cyclotomic
+                    # palindromic Salem factor. Shares the
+                    # gp_factor_script / parse_gp_output /
+                    # db_line_for_factor helpers with
+                    # tools/factor_5term_reducibles.py (still useful for
+                    # backfilling existing CSV files when needed).
+                    #
+                    # The factor gp script is filtered to 1.001 < M(F) <
+                    # m_max_log so trivially-cyclotomic and out-of-band
+                    # factors are dropped at the source. The per-factor
+                    # DB-line gating below uses m_max_db just like the
+                    # irreducible path above, so both bands grow
+                    # consistently.
                     if (not irr) and (args.m_min < M_f < args.m_max_log):
-                        # TODO: invoke gp_factor_script (parallel to
-                        # scan_pn_convergence.py's reducible branch) and
-                        # emit per-factor DB-line + roots-block. Until
-                        # this is wired up, rely on
-                        # tools/factor_5term_reducibles.py running on the
-                        # scan CSV after the main scan finishes.
-                        pass
+                        try:
+                            fproc = subprocess.run(
+                                ["gp", "-q", "--default",
+                                 "parisize=4000000000"],
+                                input=gp_factor_script(
+                                    N, a, s1, s2,
+                                    str(args.m_max_log),
+                                    args.precision),
+                                capture_output=True, text=True,
+                                timeout=args.timeout,
+                            )
+                        except subprocess.TimeoutExpired:
+                            print(f"N={N} a={a} ({s1:+d},{s2:+d}): "
+                                  f"factor timeout",
+                                  file=sys.stderr)
+                            fproc = None
+                        if fproc is not None and fproc.returncode != 0:
+                            print(f"N={N} a={a} ({s1:+d},{s2:+d}): "
+                                  f"factor gp rc={fproc.returncode}",
+                                  file=sys.stderr)
+                            fproc = None
+                        if fproc is not None:
+                            factors = parse_gp_output(fproc.stdout)
+                            for fac in factors:
+                                try:
+                                    M_factor = float(fac["M_str"])
+                                except (ValueError, KeyError):
+                                    continue
+                                if not (args.m_min < M_factor
+                                        < args.m_max_log):
+                                    continue
+                                factor_db_line = db_line_for_factor(fac)
+                                if factor_db_line is None:
+                                    # Odd-degree / non-palindromic /
+                                    # reciprocity-fail factors are
+                                    # dropped (a 5-term parent's
+                                    # non-Salem factors are not DB
+                                    # material).
+                                    continue
+                                if db_f and M_factor < args.m_max_db:
+                                    db_f.write(factor_db_line + "\n")
+                                    n_db_emitted += 1
+                                if roots_f is not None:
+                                    roots_f.write(
+                                        f"# {factor_db_line}\n")
+                                    for (re_str, im_str) in fac["roots"]:
+                                        roots_f.write(
+                                            f"{re_str} {im_str}\n")
+                                    roots_f.write("\n")
 
                     n_done += 1
                     if n_done % 100 == 0:
