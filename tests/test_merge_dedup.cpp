@@ -24,7 +24,9 @@
 
 #include "psmm.h"
 #include "utilities.h"
+#include "rootfinder.h"
 #include "polyhelpers.h"
+#include "polyproperties.h"
 
 #include <cstdio>
 #include <fstream>
@@ -365,20 +367,21 @@ TEST_CASE("is_substitution_polynomial: detects P(x) = Q(x^d) for d > 1")
 }
 
 
-TEST_CASE("merge rejects Lehmer(x^2) substitution at N=20")
+TEST_CASE("merge reduces Lehmer(x^k) substitutions to Lehmer at N=10")
 {
     // Regression target for the 2026-05-26 chunk-merge incident: chunks 0..6
     // emitted 53 Lehmer-M entries at N in {20, 30, 40, ..., 360} via
     // factor_5term_reducibles.py extracting Lehmer(x^k) factors from
-    // reducible 5-term parents. M(Lehmer(x^k)) = M(Lehmer) is no new
-    // mathematical information; the merge must drop these.
+    // reducible 5-term parents. M(Lehmer(x^k)) = M(Lehmer); the merge
+    // must reduce these to Lehmer at degree 10 -- not as new entries at
+    // higher degrees and not as silent drops.
 
     const std::string M_LEHMER =
         "1.176280818259917506544070338474035050693415806564695259830106347029688377";
 
     std::vector<std::pair<std::size_t, std::string>> meta = {
         {20, M_LEHMER},  // Lehmer(x^2)
-        {20, M_LEHMER},  // Lehmer(-x^2)
+        {20, M_LEHMER},  // Lehmer(-x^2) -- x->-x equivalent of Lehmer reduces to same canonical
     };
     std::vector<std::vector<int>> coeffs = {
         {1, 0,  1, 0, 0, 0, -1, 0, -1, 0, -1},
@@ -392,20 +395,29 @@ TEST_CASE("merge rejects Lehmer(x^2) substitution at N=20")
     merge_files_with_results(in_path, out_path, 128, 72, 256);
 
     auto rows = read_entries(out_path);
-    CHECK(rows.empty());   // both inputs are substitutions -> nothing emitted
+    // Both inputs are substitutions of the SAME Lehmer (up to x->-x).
+    // Reduction + (N, coeffs) + xneg dedup -> single Lehmer entry at N=10.
+    REQUIRE(rows.size() == 1);
+    const auto& [N, M, c] = rows[0];
+    CHECK(N == 10);
+    // Canonical Lehmer half is one of these two x->-x equivalent forms
+    // (which one depends on stable_sort's tie-break on M; both are valid):
+    const std::vector<int> classical = {1,  1, 0, -1, -1, -1};
+    const std::vector<int> flipped   = {1, -1, 0,  1, -1,  1};
+    CHECK((c == classical || c == flipped));
 
     std::filesystem::remove(in_path);
     std::filesystem::remove(out_path);
 }
 
 
-TEST_CASE("merge keeps Lehmer (primitive) and rejects its x^2 substitution in a mixed input")
+TEST_CASE("merge: primitive Lehmer + its substitutions all collapse to single Lehmer entry")
 {
     const std::string M_LEHMER =
         "1.176280818259917506544070338474035050693415806564695259830106347029688377";
 
     std::vector<std::pair<std::size_t, std::string>> meta = {
-        {10, M_LEHMER},  // Lehmer (primitive)
+        {10, M_LEHMER},  // Lehmer (primitive) -- loaded first, wins canonical
         {20, M_LEHMER},  // Lehmer(x^2) (substitution)
         {30, M_LEHMER},  // Lehmer(x^3) (substitution)
     };
@@ -423,6 +435,10 @@ TEST_CASE("merge keeps Lehmer (primitive) and rejects its x^2 substitution in a 
     merge_files_with_results(in_path, out_path, 128, 72, 256);
 
     auto rows = read_entries(out_path);
+    // Lehmer at N=10 wins (primitive, loaded first). The N=20 and N=30
+    // substitutions reduce to Lehmer at N=10 and dedup against it
+    // WITHOUT triggering polroots (since the (N, coeffs) match is found
+    // before properties are recomputed).
     REQUIRE(rows.size() == 1);
     const auto& [N, M, c] = rows[0];
     CHECK(N == 10);

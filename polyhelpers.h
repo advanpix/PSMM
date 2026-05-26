@@ -15,6 +15,18 @@
 #include <set>
 #include <utility>
 
+// Forward declaration of polyproperties.h's main computation helper so
+// that merge_files_with_results below can call it without forcing every
+// translation unit that includes polyhelpers.h to also pull in
+// polyproperties.h (which transitively depends on utilities.h's printp,
+// rootfinder.h's mpsolve glue, etc.). The actual definition lives in
+// polyproperties.h; callers of merge_files_with_results need only
+// link to a TU that provides it (psmm.cpp does; test_merge_dedup.cpp's
+// merge tests do not exercise the substitution-reduce path at degrees
+// that require polroots, so the inline body still compiles).
+inline void compute_all_properties_of_reciprocal_polynomial(
+    reciprocal_polynomial_t& p, int bits, int nthreads);
+
 // x -> -x map on a reciprocal polynomial's half-coefficient vector
 // a[0]..a[N/2]: negate the entries at odd indices. P(-x) and P(x) have
 // identical Mahler measure but differ in canonical form; the DB stores
@@ -27,27 +39,17 @@ inline std::vector<int> xneg_flip_half(const std::vector<int>& half)
     return out;
 }
 
-// Returns true if the palindromic polynomial of degree N with
-// half-coefficients `half` is a non-trivial substitution P(x) = Q(x^d)
-// for some d > 1, where Q is a polynomial of smaller degree N/d.
+// Returns the substitution degree d >= 1 of a palindromic polynomial:
+// the largest d such that all positions of nonzero coefficients in the
+// FULL polynomial are divisible by d. d == 1 means the polynomial is
+// primitive (not a substitution); d > 1 means P(x) = Q(x^d) for some
+// Q of smaller degree N/d.
 //
-// Why this matters for the DB: Mahler measure is invariant under the
-// substitution x -> x^k for any k >= 1, so M(P(x)) = M(Q(x)) -- P
-// inherits its Mahler measure entirely from Q. The DB tracks minimal-
-// degree representatives only; substitutions are rejected at merge
-// time because they would inflate counts and double-list the same
-// Mahler measure across degrees (e.g. Lehmer's polynomial at N=10
-// AND Lehmer(x^2) at N=20 AND Lehmer(x^3) at N=30 ... all sharing
-// M ~= 1.1763).
-//
-// Detection: P is a substitution iff gcd of positions of nonzero
-// coefficients in the FULL polynomial is > 1. For our entries
-// a[0] = a[N] = 1 always, so N is always a nonzero position; we
-// initialise the gcd with N and iterate the half-indices 1..N/2.
-// Mirror positions N-k contribute no new constraint once d divides N
-// (since d | N and d | k => d | (N-k)). We early-exit as soon as d
-// hits 1 -- any further nonzero half-coefficient cannot change that.
-inline bool is_substitution_polynomial(std::size_t N,
+// For our entries a[0] = a[N] = 1 always, so N is always a nonzero
+// position; we initialise the gcd with N and iterate the half-indices
+// 1..N/2. Mirror positions N-k contribute no new constraint once d
+// divides N (d | N and d | k => d | (N-k)). Early-exit at d == 1.
+inline std::size_t substitution_degree(std::size_t N,
                                        const std::vector<int>& half)
 {
     std::size_t d = N;
@@ -56,10 +58,40 @@ inline bool is_substitution_polynomial(std::size_t N,
         if(half[k] != 0)
         {
             d = std::gcd(d, k);
-            if(d == 1) return false;
+            if(d == 1) return 1;
         }
     }
-    return d > 1;
+    return d;
+}
+
+// Convenience boolean wrapper: true iff the polynomial is a non-trivial
+// substitution P(x) = Q(x^d) for some d > 1.
+inline bool is_substitution_polynomial(std::size_t N,
+                                       const std::vector<int>& half)
+{
+    return substitution_degree(N, half) > 1;
+}
+
+// Given P at degree N with half-coefficients `half`, and a known
+// substitution degree d > 1 (so P(x) = Q(x^d)), write Q's half-
+// coefficients into `out_half`. Q has degree N/d and is palindromic.
+//
+// Q(y)'s coefficient at y^k equals P(x)'s coefficient at x^(k*d):
+// substituting y = x^d, the y^k term of Q becomes the x^(k*d) term
+// of Q(x^d) = P. So Q's k-th coefficient = P's (k*d)-th coefficient.
+// Q's half (positions 0..N_Q/2 = 0..N/(2d)) reads from P's half at
+// strides of d (positions 0, d, 2d, ..., N/2 of P's half).
+inline void reduce_substitution(std::size_t N,
+                                const std::vector<int>& half,
+                                std::size_t d,
+                                std::vector<int>& out_half)
+{
+    const std::size_t N_Q = N / d;
+    out_half.assign(N_Q / 2 + 1, 0);
+    for(std::size_t k = 0; k < out_half.size(); ++k)
+    {
+        out_half[k] = half[k * d];
+    }
 }
 
 // STRICT dedup predicate: returns 1 if any entry in `polynomials` has
@@ -379,43 +411,87 @@ inline void merge_files_with_results(const std::string& input, const std::string
     // dropped distinct higher-degree entries whenever a lower-degree
     // entry with coincident M was merged. See commit bc1e760 for the
     // 2026-05-25 incident.
-    // Reject substitutions BEFORE the (N, coeffs) + x->-x dedup: P(x) = Q(x^d)
-    // for some d > 1 inherits its Mahler measure from a smaller-degree Q,
-    // by the substitution-invariance theorem M(P(x^k)) = M(P(x)). The DB
-    // tracks minimal-degree representatives only -- accepting a substitution
-    // would duplicate the Mahler measure already represented by Q at lower N
-    // (whether Q is in the DB or not is immaterial; M(Q) is implied).
+    // For each input P, REDUCE substitutions P(x) = Q(x^d) to their
+    // minimal-degree form Q. Mahler measure is invariant under x -> x^d,
+    // so M(P) = M(Q). Storing Q at degree N/d instead of P at degree N
+    // keeps the DB at one entry per equivalence class of "polynomials
+    // sharing this Mahler measure via the substitution relation" --
+    // the minimal-degree representative.
     //
-    // Before this filter (introduced 2026-05-26 after the chunk-merge
-    // session that found 53 Lehmer-M substitutions at degrees 20..360 had
-    // entered the DB), the merge mode let any irreducible reciprocal poly
-    // pass; the earlier (pre-e0340eb) M-tolerance dedup happened to block
-    // most substitutions as a side-effect since M(Q(x^d)) == M(Q(x)),
-    // collapsing them with Q's entry. The new (N, coeffs)-only dedup
-    // doesn't.
-    std::size_t n_substitution = 0;
+    // ORDER OF OPERATIONS IS PERFORMANCE-CRITICAL:
+    //
+    //   1. (cheap) Detect substitution: gcd of nonzero positions.
+    //   2. (cheap) Extract Q's coefficients: reduce_substitution.
+    //   3. (cheap) Check (Q.N, Q.coeffs) and (Q.N, xneg(Q.coeffs))
+    //      against seen_keys. If Q is already present (exactly or as
+    //      its x -> -x flip), SKIP -- no polroots needed.
+    //   4. (EXPENSIVE) Only for Q's that survived dedup: call
+    //      compute_all_properties_of_reciprocal_polynomial(Q) to recompute
+    //      Q.M, Q.K, Q.U, Q.Q, Q.R, Q.nnz, Q.H, Q.L. polroots on Q
+    //      (degree N/d) is the bottleneck; doing it before dedup would
+    //      mean polroots'ing many Q's only to find they're already in
+    //      DB. The early-exit on dedup avoids that waste.
+    //
+    // For chunks 0-6 (~28k substitutions in the inputs), most Q's are
+    // already in DB from earlier scans (the original 925a17c run
+    // covered the same 5-term family at the small-a slabs). So most
+    // substitutions skip polroots entirely. Only the rare "Q not in
+    // DB" case pays the recompute cost -- which is the case we want
+    // to recover anyway (those Q's are new minimal-form entries the
+    // earlier scans never produced).
+    std::size_t n_substitution_reduced = 0;
+    std::size_t n_substitution_already_in_db = 0;
+    std::size_t n_substitution_new = 0;
     std::vector<reciprocal_polynomial_t> verified;
     std::set<std::pair<std::size_t, std::vector<int>>> seen_keys;
     for(std::size_t i = 0; i < polynomials.size(); i++)
     {
-        reciprocal_polynomial_t& p = polynomials[i];
-        if(is_substitution_polynomial(p.N, p.coeffs))
+        reciprocal_polynomial_t* candidate = &polynomials[i];
+        reciprocal_polynomial_t Q;
+        bool is_substitution = false;
+        std::size_t d = substitution_degree(candidate->N, candidate->coeffs);
+        if(d > 1)
         {
-            ++n_substitution;
+            is_substitution = true;
+            ++n_substitution_reduced;
+            // (cheap) Reduce coefficients only -- no property
+            // computation yet.
+            reduce_substitution(candidate->N, candidate->coeffs, d, Q.coeffs);
+            Q.N = candidate->N / d;
+            candidate = &Q;
+        }
+        // (cheap) (N, coeffs) + x -> -x dedup check.
+        std::pair<std::size_t, std::vector<int>> key(candidate->N, candidate->coeffs);
+        std::pair<std::size_t, std::vector<int>> xneg_key(candidate->N, xneg_flip_half(candidate->coeffs));
+        if(seen_keys.count(key)      != 0)  // exact (N, coeffs) duplicate
+        {
+            if(is_substitution) ++n_substitution_already_in_db;
             continue;
         }
-        std::pair<std::size_t, std::vector<int>> key(p.N, p.coeffs);
-        std::pair<std::size_t, std::vector<int>> xneg_key(p.N, xneg_flip_half(p.coeffs));
-        if(seen_keys.count(key)      != 0) continue;  // exact (N, coeffs) duplicate
-        if(seen_keys.count(xneg_key) != 0) continue;  // x->-x flip of existing entry
+        if(seen_keys.count(xneg_key) != 0)  // x->-x flip of existing entry
+        {
+            if(is_substitution) ++n_substitution_already_in_db;
+            continue;
+        }
+        // (EXPENSIVE) Q passed dedup -- recompute its properties via
+        // polroots. Only paid for Q's that aren't already in DB.
+        if(is_substitution)
+        {
+            compute_all_properties_of_reciprocal_polynomial(Q, precision, 1);
+            ++n_substitution_new;
+        }
         seen_keys.insert(key);
-        verified.push_back(p);
-        nresults[p.N]++;
+        verified.push_back(*candidate);
+        nresults[candidate->N]++;
     }
-    if(n_substitution > 0)
+    if(n_substitution_reduced > 0)
     {
-        printf("Rejected %zu substitution polynomials (P(x) = Q(x^d), d > 1).\n",
-               n_substitution);
+        printf("Substitutions: %zu reduced to minimal form, "
+               "%zu already in DB (no polroots needed), "
+               "%zu new minimal-form entries added (polroots recomputed).\n",
+               n_substitution_reduced,
+               n_substitution_already_in_db,
+               n_substitution_new);
     }
 
     // Pass 3: sort the deduped result by (N asc, M asc) for clean
